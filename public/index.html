@@ -85,27 +85,47 @@ function move(dt){
 
   if(chatOpen) return;
 
-  let x=0,y=0;
+  const cos = Math.cos(player.angle);
+  const sin = Math.sin(player.angle);
 
-  const fx = Math.cos(player.angle);
-  const fy = Math.sin(player.angle);
+  let dx = 0;
+  let dy = 0;
 
-  const rx = Math.cos(player.angle + Math.PI/2);
-  const ry = Math.sin(player.angle + Math.PI/2);
+  // forward / back
+  if(keys.w || keys.arrowup){
+    dx += cos;
+    dy += sin;
+  }
 
-  if(keys.w||keys.arrowup){x+=fx;y+=fy}
-  if(keys.s||keys.arrowdown){x-=fx;y-=fy}
-  if(keys.d||keys.arrowright){x+=rx;y+=ry}
-  if(keys.a||keys.arrowleft){x-=rx;y-=ry}
+  if(keys.s || keys.arrowdown){
+    dx -= cos;
+    dy -= sin;
+  }
 
-  const len = Math.hypot(x,y);
-  if(len){x/=len;y/=len}
+  // strafe (PERPENDICULAR, correct handed system)
+  if(keys.d || keys.arrowright){
+    dx += -sin;
+    dy += cos;
+  }
 
-  const nx = player.x + x*player.speed*dt;
-  const ny = player.y + y*player.speed*dt;
+  if(keys.a || keys.arrowleft){
+    dx += sin;
+    dy -= cos;
+  }
 
-  if(!wall(nx,player.y)) player.x = nx;
-  if(!wall(player.x,ny)) player.y = ny;
+  // IMPORTANT: do NOT normalize movement
+
+  dx *= player.speed * dt;
+  dy *= player.speed * dt;
+
+  // axis-separated collision (this is key)
+  if(!wall(player.x + dx, player.y)){
+    player.x += dx;
+  }
+
+  if(!wall(player.x, player.y + dy)){
+    player.y += dy;
+  }
 }
 
 function draw(){
