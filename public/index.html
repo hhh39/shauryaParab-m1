@@ -256,67 +256,28 @@ function wallAt(x,y){
   return map[my][mx] === "#";
 }
 
-function updatePlayer(dt){
+if(keys.w || keys.arrowup){
 
-  if(chatOpen) return;
+  moveX += cos;
+  moveY += sin;
+}
 
-  let moveX = 0;
-  let moveY = 0;
+if(keys.s || keys.arrowdown){
 
-  const cos =
-    Math.cos(player.angle);
+  moveX -= cos;
+  moveY -= sin;
+}
 
-  const sin =
-    Math.sin(player.angle);
+if(keys.a || keys.arrowleft){
 
-  if(keys.w){
+  moveX += -sin;
+  moveY += cos;
+}
 
-    moveX += cos;
-    moveY += sin;
-  }
+if(keys.d || keys.arrowright){
 
-  if(keys.s){
-
-    moveX -= cos;
-    moveY -= sin;
-  }
-
-  if(keys.a){
-
-    moveX += sin;
-    moveY -= cos;
-  }
-
-  if(keys.d){
-
-    moveX -= sin;
-    moveY += cos;
-  }
-
-  const length =
-    Math.hypot(moveX,moveY);
-
-  if(length > 0){
-
-    moveX /= length;
-    moveY /= length;
-  }
-
-  const nextX =
-    player.x +
-    moveX * player.speed * dt;
-
-  const nextY =
-    player.y +
-    moveY * player.speed * dt;
-
-  if(!wallAt(nextX,player.y)){
-    player.x = nextX;
-  }
-
-  if(!wallAt(player.x,nextY)){
-    player.y = nextY;
-  }
+  moveX += sin;
+  moveY += -cos;
 }
 
 function drawMap(){
