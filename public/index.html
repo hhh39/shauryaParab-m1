@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
+
 <meta
   name="viewport"
   content="width=device-width,initial-scale=1.0"
@@ -13,12 +15,13 @@
 
 *{
   box-sizing:border-box;
+  margin:0;
+  padding:0;
 }
 
 body{
-  margin:0;
   overflow:hidden;
-  background:black;
+  background:#000;
   color:#2affaa;
   font-family:monospace;
 }
@@ -30,13 +33,18 @@ canvas{
 #menu{
   position:fixed;
   inset:0;
-  background:black;
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
   gap:12px;
-  z-index:10;
+  background:black;
+  z-index:100;
+}
+
+h1{
+  font-size:42px;
+  margin-bottom:10px;
 }
 
 input,
@@ -47,10 +55,16 @@ button{
   font-family:inherit;
 }
 
+input{
+  background:black;
+  color:#2affaa;
+  border:2px solid #2affaa;
+}
+
 button{
   background:#2affaa;
-  border:none;
   color:black;
+  border:none;
   cursor:pointer;
   font-weight:bold;
 }
@@ -61,20 +75,20 @@ button:hover{
 
 #partyText,
 #playerList{
-  white-space:pre-line;
   text-align:center;
+  white-space:pre-line;
 }
 
 #messages{
   position:fixed;
-  left:20px;
   top:20px;
+  left:20px;
   width:320px;
-  max-height:240px;
+  height:240px;
   overflow:hidden;
-  padding:10px;
   border:2px solid #2affaa;
-  background:rgba(0,0,0,0.75);
+  background:rgba(0,0,0,0.7);
+  padding:10px;
 }
 
 .message{
@@ -89,13 +103,26 @@ button:hover{
   transform:translateX(-50%);
   width:420px;
   max-width:90vw;
-  display:none;
   background:black;
   color:white;
   border:2px solid #2affaa;
+  display:none;
+}
+
+#crosshair{
+  position:fixed;
+  left:50%;
+  top:50%;
+  width:10px;
+  height:10px;
+  background:white;
+  transform:
+    translate(-50%,-50%);
+  pointer-events:none;
 }
 
 </style>
+
 </head>
 <body>
 
@@ -144,6 +171,8 @@ button:hover{
   maxlength="120"
 />
 
+<div id="crosshair"></div>
+
 <canvas id="game"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -173,7 +202,7 @@ addEventListener(
 
 const TILE = 64;
 
-const map = [
+const MAP = [
 "####################",
 "#..................#",
 "#....######........#",
@@ -200,16 +229,23 @@ const player = {
   username:"PLAYER"
 };
 
-const otherPlayers = new Map();
+const otherPlayers =
+  new Map();
 
 const keys = {};
 
 let gameStarted = false;
-let isAdmin = false;
 let chatOpen = false;
+let isAdmin = false;
 
 const menu =
   document.getElementById("menu");
+
+const partyText =
+  document.getElementById("partyText");
+
+const playerList =
+  document.getElementById("playerList");
 
 const messages =
   document.getElementById("messages");
@@ -217,25 +253,22 @@ const messages =
 const chatInput =
   document.getElementById("chatInput");
 
-const playerList =
-  document.getElementById("playerList");
-
-const partyText =
-  document.getElementById("partyText");
-
 function addMessage(name,text){
 
   const div =
     document.createElement("div");
 
-  div.className = "message";
+  div.className =
+    "message";
 
   div.textContent =
     `[${name}]: ${text}`;
 
   messages.appendChild(div);
 
-  while(messages.children.length > 8){
+  while(
+    messages.children.length > 8
+  ){
 
     messages.removeChild(
       messages.firstChild
@@ -251,49 +284,117 @@ function wallAt(x,y){
   const my =
     Math.floor(y / TILE);
 
-  if(!map[my]) return true;
+  if(!MAP[my]) return true;
 
-  return map[my][mx] === "#";
+  return MAP[my][mx] === "#";
 }
 
-if(keys.w || keys.arrowup){
+function updatePlayer(dt){
 
-  moveX += cos;
-  moveY += sin;
-}
+  if(chatOpen) return;
 
-if(keys.s || keys.arrowdown){
+  let moveX = 0;
+  let moveY = 0;
 
-  moveX -= cos;
-  moveY -= sin;
-}
+  const cos =
+    Math.cos(player.angle);
 
-if(keys.a || keys.arrowleft){
+  const sin =
+    Math.sin(player.angle);
 
-  moveX += -sin;
-  moveY += cos;
-}
+  if(
+    keys.w ||
+    keys.arrowup
+  ){
+    moveX += cos;
+    moveY += sin;
+  }
 
-if(keys.d || keys.arrowright){
+  if(
+    keys.s ||
+    keys.arrowdown
+  ){
+    moveX -= cos;
+    moveY -= sin;
+  }
 
-  moveX += sin;
-  moveY += -cos;
+  if(
+    keys.a ||
+    keys.arrowleft
+  ){
+    moveX += -sin;
+    moveY += cos;
+  }
+
+  if(
+    keys.d ||
+    keys.arrowright
+  ){
+    moveX += sin;
+    moveY += -cos;
+  }
+
+  const length =
+    Math.hypot(
+      moveX,
+      moveY
+    );
+
+  if(length > 0){
+
+    moveX /= length;
+    moveY /= length;
+  }
+
+  const nextX =
+    player.x +
+    moveX *
+    player.speed *
+    dt;
+
+  const nextY =
+    player.y +
+    moveY *
+    player.speed *
+    dt;
+
+  if(
+    !wallAt(
+      nextX,
+      player.y
+    )
+  ){
+    player.x = nextX;
+  }
+
+  if(
+    !wallAt(
+      player.x,
+      nextY
+    )
+  ){
+    player.y = nextY;
+  }
 }
 
 function drawMap(){
 
-  for(let y=0;y<map.length;y++){
+  for(
+    let y=0;
+    y<MAP.length;
+    y++
+  ){
 
-    for(let x=0;x<map[y].length;x++){
+    for(
+      let x=0;
+      x<MAP[y].length;
+      x++
+    ){
 
-      if(map[y][x] === "#"){
-
-        ctx.fillStyle = "#2affaa";
-
-      }else{
-
-        ctx.fillStyle = "#111";
-      }
+      ctx.fillStyle =
+        MAP[y][x] === "#"
+        ? "#2affaa"
+        : "#111";
 
       ctx.fillRect(
         x * TILE,
@@ -305,21 +406,47 @@ function drawMap(){
   }
 }
 
-function drawPlayer(x,y,color){
+function drawPlayer(
+  x,
+  y,
+  angle,
+  color
+){
+
+  ctx.save();
+
+  ctx.translate(x,y);
+
+  ctx.rotate(angle);
 
   ctx.fillStyle = color;
 
   ctx.beginPath();
 
   ctx.arc(
-    x,
-    y,
+    0,
+    0,
     12,
     0,
     Math.PI * 2
   );
 
   ctx.fill();
+
+  ctx.strokeStyle =
+    color;
+
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+
+  ctx.moveTo(0,0);
+
+  ctx.lineTo(20,0);
+
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function draw(){
@@ -334,8 +461,11 @@ function draw(){
   ctx.save();
 
   ctx.translate(
-    canvas.width / 2 - player.x,
-    canvas.height / 2 - player.y
+    canvas.width / 2
+    - player.x,
+
+    canvas.height / 2
+    - player.y
   );
 
   drawMap();
@@ -343,14 +473,19 @@ function draw(){
   drawPlayer(
     player.x,
     player.y,
+    player.angle,
     "#ffffff"
   );
 
-  for(const other of otherPlayers.values()){
+  for(
+    const other
+    of otherPlayers.values()
+  ){
 
     drawPlayer(
       other.x,
       other.y,
+      other.angle,
       "#ff4444"
     );
   }
@@ -363,12 +498,13 @@ let lastTime =
 
 let lastSent = 0;
 
-function loop(now){
+function gameLoop(now){
 
   if(!gameStarted) return;
 
   const dt =
-    (now - lastTime) / 1000;
+    (now - lastTime)
+    / 1000;
 
   lastTime = now;
 
@@ -378,67 +514,78 @@ function loop(now){
 
   if(now - lastSent > 33){
 
-    socket.emit("move",{
-      x:player.x,
-      y:player.y,
-      angle:player.angle
-    });
+    socket.emit(
+      "move",
+      {
+        x:player.x,
+        y:player.y,
+        angle:player.angle
+      }
+    );
 
     lastSent = now;
   }
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(
+    gameLoop
+  );
 }
 
-addEventListener("keydown",e=>{
+addEventListener(
+  "keydown",
+  e=>{
 
-  const key =
-    e.key.toLowerCase();
+    const key =
+      e.key.toLowerCase();
 
-  if(key === "enter"){
+    if(key === "enter"){
 
-    if(chatOpen){
+      if(chatOpen){
 
-      const value =
-        chatInput.value.trim();
+        const value =
+          chatInput.value.trim();
 
-      if(value){
+        if(value){
 
-        socket.emit(
-          "chat",
-          value
-        );
+          socket.emit(
+            "chat",
+            value
+          );
+        }
+
+        chatInput.value = "";
+
+        chatInput.style.display =
+          "none";
+
+        chatOpen = false;
+
+      }else{
+
+        chatInput.style.display =
+          "block";
+
+        chatInput.focus();
+
+        chatOpen = true;
       }
 
-      chatInput.value = "";
-
-      chatInput.style.display =
-        "none";
-
-      chatOpen = false;
-
-    }else{
-
-      chatInput.style.display =
-        "block";
-
-      chatInput.focus();
-
-      chatOpen = true;
+      return;
     }
 
-    return;
+    keys[key] = true;
   }
+);
 
-  keys[key] = true;
-});
+addEventListener(
+  "keyup",
+  e=>{
 
-addEventListener("keyup",e=>{
-
-  keys[
-    e.key.toLowerCase()
-  ] = false;
-});
+    keys[
+      e.key.toLowerCase()
+    ] = false;
+  }
+);
 
 addEventListener(
   "mousemove",
@@ -460,7 +607,9 @@ document
 
   const username =
     document
-    .getElementById("username")
+    .getElementById(
+      "username"
+    )
     .value
     .trim();
 
@@ -475,7 +624,8 @@ document
   .getElementById(
     "startGameBtn"
   )
-  .style.display = "block";
+  .style.display =
+    "block";
 
   socket.emit(
     "createParty",
@@ -489,19 +639,24 @@ document
 
   const username =
     document
-    .getElementById("username")
+    .getElementById(
+      "username"
+    )
     .value
     .trim();
 
   const code =
     document
-    .getElementById("partyCode")
+    .getElementById(
+      "partyCode"
+    )
     .value
     .trim();
 
-  if(!username || !code){
-    return;
-  }
+  if(
+    !username ||
+    !code
+  ) return;
 
   player.username =
     username.toUpperCase();
@@ -571,7 +726,9 @@ socket.on(
       text +=
         `• ${p.username}\n`;
 
-      if(p.id !== socket.id){
+      if(
+        p.id !== socket.id
+      ){
 
         otherPlayers.set(
           p.id,
@@ -589,16 +746,17 @@ socket.on(
   "playerMoved",
   data=>{
 
-    const player =
+    const other =
       otherPlayers.get(
         data.id
       );
 
-    if(!player) return;
+    if(!other) return;
 
-    player.x = data.x;
-    player.y = data.y;
-    player.angle = data.angle;
+    other.x = data.x;
+    other.y = data.y;
+    other.angle =
+      data.angle;
   }
 );
 
@@ -626,7 +784,7 @@ socket.on(
       performance.now();
 
     requestAnimationFrame(
-      loop
+      gameLoop
     );
   }
 );
@@ -636,7 +794,7 @@ socket.on(
   ()=>{
 
     alert(
-      "DISCONNECTED FROM SERVER"
+      "DISCONNECTED"
     );
   }
 );
