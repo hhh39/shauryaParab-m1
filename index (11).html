@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STATIC LINE ONLINE</title>
+
+<style>
+body{
+  background:black;
+  color:#2affaa;
+  font-family:monospace;
+  overflow:hidden;
+  margin:0;
+}
+
+canvas{
+  display:block;
+}
+
+#menu{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:12px;
+  background:black;
+}
+
+input,button{
+  width:280px;
+  padding:12px;
+  font-size:18px;
+}
+
+button{
+  background:#2affaa;
+  border:none;
+  cursor:pointer;
+}
+
+#messages{
+  position:fixed;
+  top:20px;
+  left:20px;
+  width:320px;
+  height:220px;
+  overflow:hidden;
+  border:2px solid #2affaa;
+  padding:10px;
+  background:rgba(0,0,0,0.7);
+}
+
+#chatInput{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  width:400px;
+  padding:12px;
+  background:black;
+  color:white;
+  border:2px solid #2affaa;
+  display:none;
+}
+
+#startGameBtn{
+  display:none;
+}
+</style>
+</head>
+<body>
+
+<div id="menu">
+
+  <h1>STATIC LINE</h1>
+
+  <input id="username" placeholder="USERNAME">
+
+  <button id="createBtn">
+    CREATE PARTY
+  </button>
+
+  <input id="partyCode" placeholder="PARTY CODE">
+
+  <button id="joinBtn">
+    JOIN PARTY
+  </button>
+
+  <button id="startGameBtn">
+    START GAME
+  </button>
+
+  <div id="partyText"></div>
+
+  <div id="playerList"></div>
+
+</div>
+
+<div id="messages"></div>
+
+<input id="chatInput" placeholder="TYPE MESSAGE">
+
+<canvas id="game"></canvas>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+<script>
+const socket = io();
+
+const canvas =
+  document.getElementById('game');
+
+const ctx = canvas.getContext('2d');
+
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+const TILE = 64;
+
+const map = [
+'####################',
+'#..................#',
+'#....######........#',
+'#..................#',
+'#.............######',
+'#..................#',
+'#....######........#',
+'#..................#',
+'#..........####....#',
+'#..................#',
+'#....######........#',
+'#..................#',
+'#..........####....#',
+'#..................#',
+'#..................#',
+'####################'
+];
+
+const player = {
+  x:TILE*2,
+  y:TILE*2,
+  angle:0,
+  speed:2.5,
+  username:'PLAYER'
+};
+
+const otherPlayers = {};
+
+const keys = {};
+
+let gameStarted = false;
+let isAdmin = false;
+
+const messages =
+  document.getElementById('messages');
+
+const chatInput =
+  document.getElementById('chatInput');
+
+function addMessage(name,text){
+
+  const div = document.createElement('div');
+
+  div.textContent =
+    `[${name}]: ${text}`;
+
+  messages.appendChild(div);
+
+  while(messages.children.length > 8){
+    messages.removeChild(
+      messages.firstChild
+    );
+  }
+}
+
+function wallAt(x,y){
+
+  const mx = Math.floor(x/TILE);
+  const my = Math.floor(y/TILE);
+
+  if(!map[my] || !map[my][mx])
+    return true;
+
+  return map[my][mx] === '#';
+}
+
+function updatePlayer(){
+
+  let moveX = 0;
+  let moveY = 0;
+
+  const cos = Math.cos(player.angle);
+  const sin = Math.sin(player.angle);
+
+  if(keys['w']){
+    moveX += cos * player.speed;
+    moveY += sin * player.speed;
+  }
+
+  if(keys['s']){
+    moveX -= cos * player.speed;
+    moveY -= sin * player.speed;
+  }
+
+  if(keys['a']){
+    moveX += sin * player.speed;
+    moveY -= cos * player.speed;
+  }
+
+  if(keys['d']){
+    moveX -= sin * player.speed;
+    moveY += cos * player.speed;
+  }
+
+  const nextX = player.x + moveX;
+  const nextY = player.y + moveY;
+
+  if(!wallAt(nextX,player.y))
+    player.x = nextX;
+
+  if(!wallAt(player.x,nextY))
+    player.y = nextY;
+}
+
+function draw(){
+
+  ctx.fillStyle = 'black';
+  ctx.fillRect(
+    0,0,
+    canvas.width,
+    canvas.height
+  );
+
+  ctx.fillStyle = '#2affaa';
+
+  ctx.fillRect(
+    canvas.width/2 - 5,
+    canvas.height/2 - 5,
+    10,
+    10
+  );
+}
+
+function gameLoop(){
+
+  if(!gameStarted) return;
+
+  updatePlayer();
+
+  draw();
+
+  socket.emit('move',{
+    x:player.x,
+    y:player.y,
+    angle:player.angle
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener('keydown',e=>{
+
+  keys[e.key.toLowerCase()] = true;
+
+  if(e.key === 'Enter'){
+
+    if(chatInput.style.display === 'block'){
+
+      const value =
+        chatInput.value.trim();
+
+      if(value.length > 0){
+        socket.emit('chat',value);
+      }
+
+      chatInput.value = '';
+
+      chatInput.style.display = 'none';
+
+    }else{
+
+      chatInput.style.display = 'block';
+
+      chatInput.focus();
+    }
+  }
+});
+
+document.addEventListener('keyup',e=>{
+  keys[e.key.toLowerCase()] = false;
+});
+
+document.addEventListener('mousemove',e=>{
+  player.angle += e.movementX * 0.002;
+});
+
+document.getElementById('createBtn')
+.onclick = ()=>{
+
+  const username =
+    document.getElementById('username')
+    .value
+    .trim();
+
+  if(!username) return;
+
+  player.username =
+    username.toUpperCase();
+
+  isAdmin = true;
+
+  document.getElementById(
+    'startGameBtn'
+  ).style.display = 'block';
+
+  socket.emit(
+    'createParty',
+    player.username
+  );
+};
+
+document.getElementById('joinBtn')
+.onclick = ()=>{
+
+  const username =
+    document.getElementById('username')
+    .value
+    .trim();
+
+  const code =
+    document.getElementById('partyCode')
+    .value
+    .trim();
+
+  if(!username || !code) return;
+
+  player.username =
+    username.toUpperCase();
+
+  socket.emit('joinParty',{
+    username:player.username,
+    code
+  });
+};
+
+document.getElementById(
+  'startGameBtn'
+).onclick = ()=>{
+
+  if(!isAdmin) return;
+
+  socket.emit('startPartyGame');
+};
+
+socket.on('partyCreated',code=>{
+
+  document.getElementById(
+    'partyText'
+  ).textContent =
+    `PARTY: ${code}`;
+});
+
+socket.on('partyJoined',code=>{
+
+  document.getElementById(
+    'partyText'
+  ).textContent =
+    `PARTY: ${code}`;
+});
+
+socket.on('players',players=>{
+
+  let text =
+    'PLAYERS IN PARTY:\n\n';
+
+  players.forEach(p=>{
+    text += `- ${p.username}\n`;
+  });
+
+  document.getElementById(
+    'playerList'
+  ).textContent = text;
+
+  for(const p of players){
+
+    if(p.id === socket.id)
+      continue;
+
+    otherPlayers[p.id] = p;
+  }
+});
+
+socket.on('chat',data=>{
+  addMessage(
+    data.username,
+    data.text
+  );
+});
+
+socket.on('gameStarted',()=>{
+
+  document.getElementById(
+    'menu'
+  ).style.display = 'none';
+
+  gameStarted = true;
+
+  gameLoop();
+});
+</script>
+
+</body>
+</html>
