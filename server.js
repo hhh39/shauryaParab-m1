@@ -3,13 +3,10 @@ const http = require("http");
 const { Server } = require("socket.io");
 
 const app = express();
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: "*"
-  }
+  cors: { origin: "*" }
 });
 
 app.use(express.static("public"));
@@ -18,273 +15,147 @@ const PORT = process.env.PORT || 3000;
 
 const parties = new Map();
 
-const CODE_CHARS =
-  "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
-function generateCode(length = 6) {
-
+function generateCode() {
   let code = "";
-
-  for (let i = 0; i < length; i++) {
-
-    code += CODE_CHARS[
-      Math.floor(Math.random() * CODE_CHARS.length)
-    ];
+  for (let i = 0; i < 6; i++) {
+    code += CHARS[Math.floor(Math.random() * CHARS.length)];
   }
-
   return code;
 }
 
-function createUniqueCode() {
-
-  let tries = 0;
-
-  while (tries < 1000) {
-
-    const code = generateCode();
-
-    if (!parties.has(code)) {
-      return code;
-    }
-
-    tries++;
-  }
-
-  throw new Error("FAILED TO GENERATE CODE");
+function createCode() {
+  let code;
+  do {
+    code = generateCode();
+  } while (parties.has(code));
+  return code;
 }
 
 function getParty(socket) {
-
-  if (!socket.partyCode) {
-    return null;
-  }
-
-  return parties.get(socket.partyCode);
+  return socket.partyCode ? parties.get(socket.partyCode) : null;
 }
 
-function sendPlayerList(code) {
+io.on("connection", (socket) => {
 
-  const party = parties.get(code);
+  socket.on("createParty", (username) => {
 
-  if (!party) return;
+    username = String(username || "").trim().toUpperCase();
+    if (!username) return;
 
-  io.to(code).emit(
-    "players",
-    Array.from(party.players.values())
-  );
-}
+    const code = createCode();
 
-function createPlayer(id, username) {
-
-  return {
-    id,
-    username,
-    x: 128,
-    y: 128,
-    angle: 0
-  };
-}
-
-io.on("connection", socket => {
-
-  console.log("CONNECTED:", socket.id);
-
-  socket.on("createParty", username => {
-
-    try {
-
-      if (typeof username !== "string") {
-        return;
-      }
-
-      username = username
-        .trim()
-        .toUpperCase()
-        .slice(0, 16);
-
-      if (!username) {
-        return;
-      }
-
-      const code = createUniqueCode();
-
-      const party = {
-        admin: socket.id,
-        players: new Map()
-      };
-
-      party.players.set(
-        socket.id,
-        createPlayer(socket.id, username)
-      );
-
-      parties.set(code, party);
-
-      socket.partyCode = code;
-
-      socket.join(code);
-
-      socket.emit("partyCreated", code);
-
-      sendPlayerList(code);
-
-    } catch (err) {
-
-      console.error(err);
-
-      socket.emit("serverError");
-    }
-  });
-
-  socket.on("joinParty", data => {
-
-    if (!data) return;
-
-    const code =
-      String(data.code || "")
-      .trim()
-      .toUpperCase();
-
-    const username =
-      String(data.username || "")
-      .trim()
-      .toUpperCase()
-      .slice(0, 16);
+    parties.set(code, {
+      admin: socket.id,
+      players: new Map()
+    });
 
     const party = parties.get(code);
 
-    if (!party) {
-
-      socket.emit("invalidParty");
-
-      return;
-    }
-
-    party.players.set(
-      socket.id,
-      createPlayer(socket.id, username)
-    );
+    party.players.set(socket.id, {
+      id: socket.id,
+      username,
+      x: 128,
+      y: 128,
+      angle: 0
+    });
 
     socket.partyCode = code;
+    socket.join(code);
 
+    socket.emit("partyCreated", code);
+
+    io.to(code).emit("players", [...party.players.values()]);
+  });
+
+  socket.on("joinParty", (data) => {
+
+    const username = String(data?.username || "").trim().toUpperCase();
+    const code = String(data?.code || "").trim().toUpperCase();
+
+    const party = parties.get(code);
+    if (!party) return socket.emit("invalidParty");
+
+    party.players.set(socket.id, {
+      id: socket.id,
+      username,
+      x: 128,
+      y: 128,
+      angle: 0
+    });
+
+    socket.partyCode = code;
     socket.join(code);
 
     socket.emit("partyJoined", code);
-
-    sendPlayerList(code);
+    io.to(code).emit("players", [...party.players.values()]);
   });
 
   socket.on("startPartyGame", () => {
-
     const party = getParty(socket);
-
     if (!party) return;
+    if (party.admin !== socket.id) return;
 
-    if (party.admin !== socket.id) {
-      return;
-    }
-
-    io.to(socket.partyCode)
-      .emit("gameStarted");
+    io.to(socket.partyCode).emit("gameStarted");
   });
 
-  socket.on("move", data => {
+  socket.on("move", (data) => {
 
     const party = getParty(socket);
-
     if (!party) return;
 
-    const player =
-      party.players.get(socket.id);
-
-    if (!player || !data) return;
-
-    if (
-      typeof data.x !== "number" ||
-      typeof data.y !== "number" ||
-      typeof data.angle !== "number"
-    ) {
-      return;
-    }
+    const player = party.players.get(socket.id);
+    if (!player) return;
 
     player.x = data.x;
     player.y = data.y;
     player.angle = data.angle;
 
-    socket.to(socket.partyCode)
-      .emit("playerMoved", player);
+    // IMPORTANT: include ID
+    socket.to(socket.partyCode).emit("playerMoved", {
+      id: socket.id,
+      x: player.x,
+      y: player.y,
+      angle: player.angle
+    });
   });
 
-  socket.on("chat", text => {
+  socket.on("chat", (text) => {
 
     const party = getParty(socket);
-
     if (!party) return;
 
-    const player =
-      party.players.get(socket.id);
-
+    const player = party.players.get(socket.id);
     if (!player) return;
 
-    text = String(text || "")
-      .trim()
-      .slice(0, 120);
-
-    if (!text) return;
-
-    io.to(socket.partyCode).emit(
-      "chat",
-      {
-        username: player.username,
-        text
-      }
-    );
+    io.to(socket.partyCode).emit("chat", {
+      username: player.username,
+      text: String(text).slice(0, 120)
+    });
   });
 
   socket.on("disconnect", () => {
 
-    console.log("DISCONNECTED:", socket.id);
-
-    const code = socket.partyCode;
-
-    if (!code) return;
-
-    const party = parties.get(code);
-
+    const party = getParty(socket);
     if (!party) return;
 
     party.players.delete(socket.id);
 
     if (party.admin === socket.id) {
-
-      const nextPlayer =
-        Array.from(
-          party.players.keys()
-        )[0];
-
-      if (nextPlayer) {
-        party.admin = nextPlayer;
-      }
+      const next = party.players.keys().next().value;
+      if (next) party.admin = next;
     }
 
     if (party.players.size === 0) {
-
-      parties.delete(code);
-
+      parties.delete(socket.partyCode);
       return;
     }
 
-    sendPlayerList(code);
+    io.to(socket.partyCode).emit("players", [...party.players.values()]);
   });
 });
 
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
-});
-
 server.listen(PORT, () => {
-
-  console.log(
-    `SERVER RUNNING ON ${PORT}`
-  );
+  console.log("RUNNING ON", PORT);
 });
