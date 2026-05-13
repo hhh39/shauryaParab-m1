@@ -1,18 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1.0"
-/>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>STATIC LINE ONLINE</title>
 
 <style>
-
 *{
   box-sizing:border-box;
   margin:0;
@@ -21,7 +14,7 @@
 
 body{
   overflow:hidden;
-  background:#000;
+  background:black;
   color:#2affaa;
   font-family:monospace;
 }
@@ -39,20 +32,13 @@ canvas{
   align-items:center;
   gap:12px;
   background:black;
-  z-index:100;
+  z-index:10;
 }
 
-h1{
-  font-size:42px;
-  margin-bottom:10px;
-}
-
-input,
-button{
+input,button{
   width:280px;
   padding:12px;
   font-size:18px;
-  font-family:inherit;
 }
 
 input{
@@ -73,12 +59,6 @@ button:hover{
   opacity:0.9;
 }
 
-#partyText,
-#playerList{
-  text-align:center;
-  white-space:pre-line;
-}
-
 #messages{
   position:fixed;
   top:20px;
@@ -91,87 +71,45 @@ button:hover{
   padding:10px;
 }
 
-.message{
-  margin-bottom:6px;
-  word-break:break-word;
-}
-
 #chatInput{
   position:fixed;
   left:50%;
   bottom:20px;
   transform:translateX(-50%);
   width:420px;
-  max-width:90vw;
+  display:none;
   background:black;
   color:white;
   border:2px solid #2affaa;
-  display:none;
 }
 
-#crosshair{
-  position:fixed;
-  left:50%;
-  top:50%;
-  width:10px;
-  height:10px;
-  background:white;
-  transform:
-    translate(-50%,-50%);
-  pointer-events:none;
+#playerList,#partyText{
+  white-space:pre-line;
 }
-
 </style>
-
 </head>
+
 <body>
 
 <div id="menu">
-
   <h1>STATIC LINE</h1>
 
-  <input
-    id="username"
-    placeholder="USERNAME"
-    maxlength="16"
-  />
+  <input id="username" placeholder="USERNAME" maxlength="16" />
 
-  <button id="createBtn">
-    CREATE PARTY
-  </button>
+  <button id="createBtn">CREATE PARTY</button>
 
-  <input
-    id="partyCode"
-    placeholder="PARTY CODE"
-    maxlength="6"
-  />
+  <input id="partyCode" placeholder="PARTY CODE" maxlength="6" />
 
-  <button id="joinBtn">
-    JOIN PARTY
-  </button>
+  <button id="joinBtn">JOIN PARTY</button>
 
-  <button
-    id="startGameBtn"
-    style="display:none"
-  >
-    START GAME
-  </button>
+  <button id="startGameBtn" style="display:none">START GAME</button>
 
   <div id="partyText"></div>
-
   <div id="playerList"></div>
-
 </div>
 
 <div id="messages"></div>
-
-<input
-  id="chatInput"
-  placeholder="TYPE MESSAGE..."
-  maxlength="120"
-/>
-
-<div id="crosshair"></div>
+<input id="chatInput" placeholder="TYPE MESSAGE..." maxlength="120"/>
 
 <canvas id="game"></canvas>
 
@@ -181,24 +119,15 @@ button:hover{
 
 const socket = io();
 
-const canvas =
-  document.getElementById("game");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const ctx =
-  canvas.getContext("2d");
-
-function resizeCanvas(){
-
+function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
 }
-
-resizeCanvas();
-
-addEventListener(
-  "resize",
-  resizeCanvas
-);
+resize();
+addEventListener("resize", resize);
 
 const TILE = 64;
 
@@ -222,70 +151,40 @@ const MAP = [
 ];
 
 const player = {
-  x:TILE * 2,
-  y:TILE * 2,
-  angle:0,
-  speed:220,
-  username:"PLAYER"
+  x: TILE * 2,
+  y: TILE * 2,
+  angle: 0,
+  speed: 220
 };
 
-const otherPlayers =
-  new Map();
-
+const otherPlayers = new Map();
 const keys = {};
 
 let gameStarted = false;
 let chatOpen = false;
 let isAdmin = false;
 
-const menu =
-  document.getElementById("menu");
-
-const partyText =
-  document.getElementById("partyText");
-
-const playerList =
-  document.getElementById("playerList");
-
-const messages =
-  document.getElementById("messages");
-
-const chatInput =
-  document.getElementById("chatInput");
+const menu = document.getElementById("menu");
+const messages = document.getElementById("messages");
+const chatInput = document.getElementById("chatInput");
+const playerList = document.getElementById("playerList");
+const partyText = document.getElementById("partyText");
 
 function addMessage(name,text){
-
-  const div =
-    document.createElement("div");
-
-  div.className =
-    "message";
-
-  div.textContent =
-    `[${name}]: ${text}`;
-
+  const div = document.createElement("div");
+  div.textContent = `[${name}]: ${text}`;
   messages.appendChild(div);
 
-  while(
-    messages.children.length > 8
-  ){
-
-    messages.removeChild(
-      messages.firstChild
-    );
+  while(messages.children.length > 8){
+    messages.removeChild(messages.firstChild);
   }
 }
 
 function wallAt(x,y){
-
-  const mx =
-    Math.floor(x / TILE);
-
-  const my =
-    Math.floor(y / TILE);
+  const mx = Math.floor(x / TILE);
+  const my = Math.floor(y / TILE);
 
   if(!MAP[my]) return true;
-
   return MAP[my][mx] === "#";
 }
 
@@ -296,508 +195,194 @@ function updatePlayer(dt){
   let moveX = 0;
   let moveY = 0;
 
-  const cos =
-    Math.cos(player.angle);
+  // ✅ correct basis vectors
+  const forwardX = Math.cos(player.angle);
+  const forwardY = Math.sin(player.angle);
 
-  const sin =
-    Math.sin(player.angle);
+  const rightX = Math.cos(player.angle + Math.PI / 2);
+  const rightY = Math.sin(player.angle + Math.PI / 2);
 
-  if(
-    keys.w ||
-    keys.arrowup
-  ){
-    moveX += cos;
-    moveY += sin;
+  if(keys.w || keys.arrowup){
+    moveX += forwardX;
+    moveY += forwardY;
   }
 
-  if(
-    keys.s ||
-    keys.arrowdown
-  ){
-    moveX -= cos;
-    moveY -= sin;
+  if(keys.s || keys.arrowdown){
+    moveX -= forwardX;
+    moveY -= forwardY;
   }
 
-  if(
-    keys.a ||
-    keys.arrowleft
-  ){
-    moveX += -sin;
-    moveY += cos;
+  if(keys.d || keys.arrowright){
+    moveX += rightX;
+    moveY += rightY;
   }
 
-  if(
-    keys.d ||
-    keys.arrowright
-  ){
-    moveX += sin;
-    moveY += -cos;
+  if(keys.a || keys.arrowleft){
+    moveX -= rightX;
+    moveY -= rightY;
   }
 
-  const length =
-    Math.hypot(
-      moveX,
-      moveY
-    );
+  const len = Math.hypot(moveX,moveY);
 
-  if(length > 0){
-
-    moveX /= length;
-    moveY /= length;
+  if(len > 0){
+    moveX /= len;
+    moveY /= len;
   }
 
-  const nextX =
-    player.x +
-    moveX *
-    player.speed *
-    dt;
+  const nextX = player.x + moveX * player.speed * dt;
+  const nextY = player.y + moveY * player.speed * dt;
 
-  const nextY =
-    player.y +
-    moveY *
-    player.speed *
-    dt;
-
-  if(
-    !wallAt(
-      nextX,
-      player.y
-    )
-  ){
-    player.x = nextX;
-  }
-
-  if(
-    !wallAt(
-      player.x,
-      nextY
-    )
-  ){
-    player.y = nextY;
-  }
-}
-
-function drawMap(){
-
-  for(
-    let y=0;
-    y<MAP.length;
-    y++
-  ){
-
-    for(
-      let x=0;
-      x<MAP[y].length;
-      x++
-    ){
-
-      ctx.fillStyle =
-        MAP[y][x] === "#"
-        ? "#2affaa"
-        : "#111";
-
-      ctx.fillRect(
-        x * TILE,
-        y * TILE,
-        TILE,
-        TILE
-      );
-    }
-  }
-}
-
-function drawPlayer(
-  x,
-  y,
-  angle,
-  color
-){
-
-  ctx.save();
-
-  ctx.translate(x,y);
-
-  ctx.rotate(angle);
-
-  ctx.fillStyle = color;
-
-  ctx.beginPath();
-
-  ctx.arc(
-    0,
-    0,
-    12,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fill();
-
-  ctx.strokeStyle =
-    color;
-
-  ctx.lineWidth = 3;
-
-  ctx.beginPath();
-
-  ctx.moveTo(0,0);
-
-  ctx.lineTo(20,0);
-
-  ctx.stroke();
-
-  ctx.restore();
+  if(!wallAt(nextX,player.y)) player.x = nextX;
+  if(!wallAt(player.x,nextY)) player.y = nextY;
 }
 
 function draw(){
-
-  ctx.clearRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.save();
-
   ctx.translate(
-    canvas.width / 2
-    - player.x,
-
-    canvas.height / 2
-    - player.y
+    canvas.width/2 - player.x,
+    canvas.height/2 - player.y
   );
 
-  drawMap();
+  // map
+  for(let y=0;y<MAP.length;y++){
+    for(let x=0;x<MAP[y].length;x++){
+      ctx.fillStyle = MAP[y][x] === "#" ? "#2affaa" : "#111";
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    }
+  }
 
-  drawPlayer(
-    player.x,
-    player.y,
-    player.angle,
-    "#ffffff"
-  );
+  // player
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,12,0,Math.PI*2);
+  ctx.fill();
 
-  for(
-    const other
-    of otherPlayers.values()
-  ){
-
-    drawPlayer(
-      other.x,
-      other.y,
-      other.angle,
-      "#ff4444"
-    );
+  // others
+  for(const p of otherPlayers.values()){
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,12,0,Math.PI*2);
+    ctx.fill();
   }
 
   ctx.restore();
 }
 
-let lastTime =
-  performance.now();
+let last = performance.now();
+let lastSend = 0;
 
-let lastSent = 0;
-
-function gameLoop(now){
-
+function loop(now){
   if(!gameStarted) return;
 
-  const dt =
-    (now - lastTime)
-    / 1000;
-
-  lastTime = now;
+  const dt = (now-last)/1000;
+  last = now;
 
   updatePlayer(dt);
-
   draw();
 
-  if(now - lastSent > 33){
-
-    socket.emit(
-      "move",
-      {
-        x:player.x,
-        y:player.y,
-        angle:player.angle
-      }
-    );
-
-    lastSent = now;
+  if(now-lastSend > 33){
+    socket.emit("move",{
+      x:player.x,
+      y:player.y,
+      angle:player.angle
+    });
+    lastSend = now;
   }
 
-  requestAnimationFrame(
-    gameLoop
-  );
+  requestAnimationFrame(loop);
 }
 
-addEventListener(
-  "keydown",
-  e=>{
+addEventListener("keydown",e=>{
+  const k = e.key.toLowerCase();
 
-    const key =
-      e.key.toLowerCase();
-
-    if(key === "enter"){
-
-      if(chatOpen){
-
-        const value =
-          chatInput.value.trim();
-
-        if(value){
-
-          socket.emit(
-            "chat",
-            value
-          );
-        }
-
-        chatInput.value = "";
-
-        chatInput.style.display =
-          "none";
-
-        chatOpen = false;
-
-      }else{
-
-        chatInput.style.display =
-          "block";
-
-        chatInput.focus();
-
-        chatOpen = true;
-      }
-
-      return;
+  if(k === "enter"){
+    if(chatOpen){
+      const v = chatInput.value.trim();
+      if(v) socket.emit("chat",v);
+      chatInput.value = "";
+      chatInput.style.display = "none";
+      chatOpen = false;
+    } else {
+      chatInput.style.display = "block";
+      chatInput.focus();
+      chatOpen = true;
     }
-
-    keys[key] = true;
+    return;
   }
-);
 
-addEventListener(
-  "keyup",
-  e=>{
+  keys[k] = true;
+});
 
-    keys[
-      e.key.toLowerCase()
-    ] = false;
-  }
-);
+addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()] = false;
+});
 
-addEventListener(
-  "mousemove",
-  e=>{
+addEventListener("mousemove",e=>{
+  if(!gameStarted || chatOpen) return;
+  player.angle += e.movementX * 0.0025;
+});
 
-    if(
-      !gameStarted ||
-      chatOpen
-    ) return;
-
-    player.angle +=
-      e.movementX * 0.0025;
-  }
-);
-
-document
-.getElementById("createBtn")
-.onclick = ()=>{
-
-  const username =
-    document
-    .getElementById(
-      "username"
-    )
-    .value
-    .trim();
-
-  if(!username) return;
-
-  player.username =
-    username.toUpperCase();
-
+document.getElementById("createBtn").onclick = ()=>{
+  const u = document.getElementById("username").value.trim();
+  if(!u) return;
+  player.username = u.toUpperCase();
   isAdmin = true;
-
-  document
-  .getElementById(
-    "startGameBtn"
-  )
-  .style.display =
-    "block";
-
-  socket.emit(
-    "createParty",
-    player.username
-  );
+  document.getElementById("startGameBtn").style.display = "block";
+  socket.emit("createParty",player.username);
 };
 
-document
-.getElementById("joinBtn")
-.onclick = ()=>{
+document.getElementById("joinBtn").onclick = ()=>{
+  const u = document.getElementById("username").value.trim();
+  const c = document.getElementById("partyCode").value.trim();
+  if(!u||!c) return;
 
-  const username =
-    document
-    .getElementById(
-      "username"
-    )
-    .value
-    .trim();
+  player.username = u.toUpperCase();
 
-  const code =
-    document
-    .getElementById(
-      "partyCode"
-    )
-    .value
-    .trim();
+  socket.emit("joinParty",{
+    username:player.username,
+    code:c
+  });
+};
 
-  if(
-    !username ||
-    !code
-  ) return;
+document.getElementById("startGameBtn").onclick = ()=>{
+  if(isAdmin) socket.emit("startPartyGame");
+};
 
-  player.username =
-    username.toUpperCase();
+socket.on("players",players=>{
+  otherPlayers.clear();
 
-  socket.emit(
-    "joinParty",
-    {
-      username:
-        player.username,
-      code
+  let text = "PLAYERS:\n\n";
+
+  for(const p of players){
+    text += `• ${p.username}\n`;
+    if(p.id !== socket.id){
+      otherPlayers.set(p.id,p);
     }
-  );
-};
-
-document
-.getElementById(
-  "startGameBtn"
-)
-.onclick = ()=>{
-
-  if(!isAdmin) return;
-
-  socket.emit(
-    "startPartyGame"
-  );
-};
-
-socket.on(
-  "partyCreated",
-  code=>{
-
-    partyText.textContent =
-      `PARTY: ${code}`;
   }
-);
 
-socket.on(
-  "partyJoined",
-  code=>{
+  playerList.textContent = text;
+});
 
-    partyText.textContent =
-      `PARTY: ${code}`;
-  }
-);
+socket.on("playerMoved",data=>{
+  const p = otherPlayers.get(data.id);
+  if(!p) return;
+  p.x = data.x;
+  p.y = data.y;
+  p.angle = data.angle;
+});
 
-socket.on(
-  "invalidParty",
-  ()=>{
+socket.on("chat",d=>{
+  addMessage(d.username,d.text);
+});
 
-    alert(
-      "INVALID PARTY CODE"
-    );
-  }
-);
-
-socket.on(
-  "players",
-  players=>{
-
-    otherPlayers.clear();
-
-    let text =
-      "PLAYERS:\n\n";
-
-    for(const p of players){
-
-      text +=
-        `• ${p.username}\n`;
-
-      if(
-        p.id !== socket.id
-      ){
-
-        otherPlayers.set(
-          p.id,
-          p
-        );
-      }
-    }
-
-    playerList.textContent =
-      text;
-  }
-);
-
-socket.on(
-  "playerMoved",
-  data=>{
-
-    const other =
-      otherPlayers.get(
-        data.id
-      );
-
-    if(!other) return;
-
-    other.x = data.x;
-    other.y = data.y;
-    other.angle =
-      data.angle;
-  }
-);
-
-socket.on(
-  "chat",
-  data=>{
-
-    addMessage(
-      data.username,
-      data.text
-    );
-  }
-);
-
-socket.on(
-  "gameStarted",
-  ()=>{
-
-    menu.style.display =
-      "none";
-
-    gameStarted = true;
-
-    lastTime =
-      performance.now();
-
-    requestAnimationFrame(
-      gameLoop
-    );
-  }
-);
-
-socket.on(
-  "disconnect",
-  ()=>{
-
-    alert(
-      "DISCONNECTED"
-    );
-  }
-);
+socket.on("gameStarted",()=>{
+  menu.style.display = "none";
+  gameStarted = true;
+  last = performance.now();
+  requestAnimationFrame(loop);
+});
 
 </script>
 
