@@ -281,8 +281,8 @@ function updateMonster(dt){
 
   const speed = monster.speed * dt;
 
-  const vx = Math.cos(monster.angle) * speed;
-  const vy = Math.sin(monster.angle) * speed;
+  let vx = Math.cos(monster.angle) * speed;
+  let vy = Math.sin(monster.angle) * speed;
 
   // try full move first
   if(!wall(monster.x + vx, monster.y + vy)){
@@ -291,17 +291,37 @@ function updateMonster(dt){
     return;
   }
 
-  // otherwise try sliding on X axis
+  // try axis movement separately (but keep momentum feel)
+  let moved = false;
+
   if(!wall(monster.x + vx, monster.y)){
     monster.x += vx;
+    moved = true;
   }
 
-  // and sliding on Y axis
   if(!wall(monster.x, monster.y + vy)){
     monster.y += vy;
+    moved = true;
+  }
+
+  // 🔥 emergency escape if fully blocked (prevents freezing forever)
+  if(!moved){
+    const escape = [
+      [1,0],[-1,0],[0,1],[0,-1],
+      [1,1],[1,-1],[-1,1],[-1,-1]
+    ];
+
+    const dir = escape[Math.floor(Math.random() * escape.length)];
+
+    const ex = monster.x + dir[0] * 2;
+    const ey = monster.y + dir[1] * 2;
+
+    if(!wall(ex, ey)){
+      monster.x = ex;
+      monster.y = ey;
+    }
   }
 }
-
 /* DRAW */
 
 function draw(){
