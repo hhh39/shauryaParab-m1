@@ -242,11 +242,11 @@ function move(dt){
   let dx = 0;
   let dy = 0;
 
-  if(keys.w) dy -= 1;
-  if(keys.s) dy += 1;
+  if(keys.w||keys.ArrowUp) dy -= 1;
+  if(keys.s||Keys.ArrowDown) dy += 1;
 
-  if(keys.a) dx -= 1;
-  if(keys.d) dx += 1;
+  if(keys.a||keys.ArrowLeft) dx -= 1;
+  if(keys.d||keys.ArrowRight) dx += 1;
 
   const len = Math.hypot(dx,dy);
 
