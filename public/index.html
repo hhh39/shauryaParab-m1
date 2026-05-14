@@ -45,10 +45,9 @@ button{
   border:2px solid gold;
   padding:10px;
   z-index:5;
-  color:white;
 }
 
-.playerItem{margin:4px 0}
+.playerItem{margin:4px 0;color:white}
 
 #gameOver{
   display:none;
@@ -96,34 +95,56 @@ button{
 
 <script>
 
+window.addEventListener("load", () => {
+
 const socket = io();
 
 /* DOM */
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
 
-const menu=document.getElementById("menu");
-const playerList=document.getElementById("playerList");
-const partyEl=document.getElementById("party");
-const startBtn=document.getElementById("start");
-const gameOverUI=document.getElementById("gameOver");
+const menu = document.getElementById("menu");
+const usernameEl = document.getElementById("username");
+const codeEl = document.getElementById("code");
+const partyEl = document.getElementById("party");
+const startBtn = document.getElementById("start");
+const playerList = document.getElementById("playerList");
+const gameOverUI = document.getElementById("gameOver");
 
-/* SIZE */
+/* SAFE BUTTONS */
+document.getElementById("create").addEventListener("click", () => {
+  const u = usernameEl.value.trim();
+  if (!u) return;
+  socket.emit("createParty", u);
+});
+
+document.getElementById("join").addEventListener("click", () => {
+  socket.emit("joinParty", {
+    username: usernameEl.value,
+    code: codeEl.value
+  });
+});
+
+startBtn.addEventListener("click", () => {
+  socket.emit("startPartyGame");
+});
+
+/* RESIZE */
 function resize(){
-  c.width=innerWidth;
-  c.height=innerHeight;
+  c.width = innerWidth;
+  c.height = innerHeight;
 }
 resize();
-addEventListener("resize",resize);
+addEventListener("resize", resize);
 
 /* STATE */
-let started=false;
-let alive=true;
+let started = false;
+let alive = true;
 
-const TILE=64;
+const TILE = 64;
 
-/* MASSIVE MAZE (RESTORED SCALE) */
-const map=[
+/* MASSIVE MAZE */
+const map = [
 "################################################################",
 "#..............#.......................#.......................#",
 "#.######.######.###########.#########..#.#########.###########.#",
@@ -133,4 +154,9 @@ const map=[
 "#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#.#.#",
 "#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#.#.#",
 "#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#.#.#",
-"#.....#.........#
+"#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#.#.#",
+"#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#.#.#",
+"#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#.#.#",
+"#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#.#.#",
+"#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#.#.#",
+"#.#####.#############.#.#.#
