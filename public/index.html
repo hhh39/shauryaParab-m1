@@ -3,17 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
 <title>STATIC LINE</title>
 
 <link rel="icon" href="https://wallpapers.com/images/featured/ghostface-pictures-ofyz28an49x5071b.jpg">
 
 <style>
+
 body{
   margin:0;
   overflow:hidden;
   background:#000;
-  color:#2affaa;
   font-family:monospace;
+  color:#2affaa;
 }
 
 canvas{
@@ -28,8 +30,8 @@ canvas{
   justify-content:center;
   align-items:center;
   gap:10px;
-  background:#000;
   z-index:5;
+  background:#000;
 }
 
 input,button{
@@ -51,8 +53,8 @@ button{
   bottom:20px;
   left:50%;
   transform:translateX(-50%);
-  display:none;
   width:400px;
+  display:none;
   z-index:4;
 }
 
@@ -62,6 +64,7 @@ button{
   left:10px;
   width:300px;
   z-index:4;
+  color:white;
 }
 
 #players{
@@ -69,27 +72,29 @@ button{
   right:10px;
   top:10px;
   width:220px;
-  background:rgba(0,0,0,0.75);
+  background:rgba(0,0,0,0.8);
+  border:2px solid gold;
   padding:10px;
-  border:2px solid #ffd700;
-  color:white;
   z-index:4;
 }
 
 #players h3{
   margin:0 0 10px 0;
-  color:#ffd700;
+  color:gold;
 }
 
 .playerItem{
-  margin:4px 0;
+  margin:5px 0;
+  font-size:15px;
 }
+
 </style>
 </head>
 
 <body>
 
 <div id="menu">
+
   <h1>STATIC LINE</h1>
 
   <input id="username" placeholder="USERNAME">
@@ -103,11 +108,15 @@ button{
   <button id="start" style="display:none">START</button>
 
   <div id="party"></div>
+
 </div>
 
 <div id="players">
+
   <h3>PLAYERS</h3>
+
   <div id="playerList"></div>
+
 </div>
 
 <div id="msg"></div>
@@ -126,6 +135,7 @@ const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 
 function resize(){
+
   c.width = innerWidth;
   c.height = innerHeight;
 }
@@ -136,34 +146,37 @@ addEventListener("resize", resize);
 
 const TILE = 64;
 
-/* MASSIVE MAZE */
+/* COLOSSAL MAZE */
+
 const map = [
-"############################################################",
-"#..............#.......................#...................#",
-"#.######.######.###########.#########..#.#########.#########",
-"#.#....#........#.........#.#.......#..#.........#.........#",
-"#.#.##.##########.#######.#.#.#####.#.##########.#########.#",
-"#.#.#.............#.....#.#.#.....#.#..........#.#.......#.#",
-"#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#",
-"#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#",
-"#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#",
-"#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#",
-"#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#",
-"#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#",
-"#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#",
-"#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#",
-"#.#####.#############.#.#.#.##########.#.#.#.#.#.#.#####.#.#",
-"#.....#...............#.#.#............#.#.#.#.#.#.#.....#.#",
-"#####.#################.#.##############.#.#.#.#.#.#.#####.#",
-"#.......................#................#...#...#.........#",
-"############################################################"
+
+"################################################################",
+"#...............#.................#...............#............#",
+"#.#############.#.###############.#.#############.#.##########.#",
+"#.#...........#.#.#.............#.#.#...........#.#.#........#.#",
+"#.#.#########.#.#.#.###########.#.#.#.#########.#.#.#.######.#.#",
+"#.#.#.......#.#.#.#.#.........#.#.#.#.#.......#.#.#.#.#....#.#.#",
+"#.#.#.#####.#.#.#.#.#.#######.#.#.#.#.#.#####.#.#.#.#.#.##.#.#.#",
+"#.#.#.....#.#.#.#.#.#.......#.#.#.#.#.#.....#.#.#.#.#.#..#.#.#.#",
+"#.#.#####.#.#.#.#.#.#######.#.#.#.#.#.#####.#.#.#.#.#.##.#.#.#.#",
+"#.#.....#.#.#.#.#.#.......#.#.#.#.#.#.....#.#.#.#.#....#.#.#.#.#",
+"#.#####.#.#.#.#.#.#######.#.#.#.#.#.#####.#.#.#.#.######.#.#.#.#",
+"#.......#.#.#.#.#.#.......#.#.#.#.#.......#.#.#.#........#.#.#.#",
+"#########.#.#.#.#.#.#######.#.#.#.#########.#.#.##########.#.#.#",
+"#.........#.#.#.#.#.#.......#.#.#...........#.#............#.#.#",
+"#.#########.#.#.#.#.#.#######.#.#############.##############.#.#",
+"#...........#.#.#.#.#.........#...............#..............#.#",
+"#.###########.#.#.#.###########################.##############.#",
+"#.............#...#.............................#..............#",
+"################################################################"
+
 ];
 
 const player = {
   x:128,
   y:128,
   angle:0,
-  speed:230
+  speed:240
 };
 
 const others = new Map();
@@ -181,7 +194,8 @@ const COLORS = [
   "#ffaa00",
   "#00ffff",
   "#ff8888",
-  "#88ff88"
+  "#88ff88",
+  "#ffaaee"
 ];
 
 function playerColor(id){
@@ -199,13 +213,6 @@ function playerColor(id){
   return COLORS[hash % COLORS.length];
 }
 
-const monster = {
-  x: 1800,
-  y: 700,
-  angle: 0,
-  speed: 120
-};
-
 function wall(x,y){
 
   const mx = Math.floor(x / TILE);
@@ -214,6 +221,8 @@ function wall(x,y){
   return !map[my] || map[my][mx] === "#";
 }
 
+/* FIXED STRAFING */
+
 function move(dt){
 
   if(chatOpen) return;
@@ -221,30 +230,30 @@ function move(dt){
   let moveX = 0;
   let moveY = 0;
 
-  const cos = Math.cos(player.angle);
-  const sin = Math.sin(player.angle);
+  const forwardX = Math.cos(player.angle);
+  const forwardY = Math.sin(player.angle);
 
-  /* FORWARD */
+  const rightX = Math.cos(player.angle + Math.PI / 2);
+  const rightY = Math.sin(player.angle + Math.PI / 2);
+
   if(keys.w){
-    moveX += cos;
-    moveY += sin;
+    moveX += forwardX;
+    moveY += forwardY;
   }
 
-  /* BACK */
   if(keys.s){
-    moveX -= cos;
-    moveY -= sin;
-  }
-
-  /* FIXED STRAFING */
-  if(keys.a){
-    moveX += sin;
-    moveY -= cos;
+    moveX -= forwardX;
+    moveY -= forwardY;
   }
 
   if(keys.d){
-    moveX -= sin;
-    moveY += cos;
+    moveX += rightX;
+    moveY += rightY;
+  }
+
+  if(keys.a){
+    moveX -= rightX;
+    moveY -= rightY;
   }
 
   const len = Math.hypot(moveX, moveY);
@@ -266,61 +275,6 @@ function move(dt){
   }
 }
 
-function updateMonster(dt){
-
-  const dx = player.x - monster.x;
-  const dy = player.y - monster.y;
-
-  const dist = Math.hypot(dx, dy);
-
-  if(dist > 1){
-
-    monster.angle = Math.atan2(dy, dx);
-
-    const mx = Math.cos(monster.angle) * monster.speed * dt;
-    const my = Math.sin(monster.angle) * monster.speed * dt;
-
-    if(!wall(monster.x + mx, monster.y)){
-      monster.x += mx;
-    }
-
-    if(!wall(monster.x, monster.y + my)){
-      monster.y += my;
-    }
-  }
-}
-
-function drawMonster(){
-
-  ctx.save();
-
-  ctx.translate(monster.x, monster.y);
-  ctx.rotate(monster.angle);
-
-  /* BLACK TRIANGLE */
-  ctx.fillStyle = "#000";
-
-  ctx.beginPath();
-  ctx.moveTo(18,0);
-  ctx.lineTo(-14,-12);
-  ctx.lineTo(-14,12);
-  ctx.closePath();
-  ctx.fill();
-
-  /* RED EYES */
-  ctx.fillStyle = "red";
-
-  ctx.beginPath();
-  ctx.arc(2,-4,2,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(2,4,2,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
 function draw(){
 
   ctx.clearRect(0,0,c.width,c.height);
@@ -328,24 +282,25 @@ function draw(){
   ctx.save();
 
   ctx.translate(
-    c.width/2 - player.x,
-    c.height/2 - player.y
+    c.width / 2 - player.x,
+    c.height / 2 - player.y
   );
 
   /* MAP */
+
   for(let y=0;y<map.length;y++){
 
     for(let x=0;x<map[y].length;x++){
 
       if(map[y][x] === "#"){
-        ctx.fillStyle = "#d4af37"; /* GOLD WALLS */
+        ctx.fillStyle = "#d4af37";
       }else{
-        ctx.fillStyle = "#fff6bf"; /* PALE YELLOW FLOOR */
+        ctx.fillStyle = "#fff6bf";
       }
 
       ctx.fillRect(
-        x*TILE,
-        y*TILE,
+        x * TILE,
+        y * TILE,
         TILE,
         TILE
       );
@@ -353,23 +308,39 @@ function draw(){
   }
 
   /* OTHER PLAYERS */
+
   for(const p of others.values()){
 
     ctx.fillStyle = playerColor(p.id);
 
     ctx.beginPath();
-    ctx.arc(p.x,p.y,10,0,Math.PI*2);
+
+    ctx.arc(
+      p.x,
+      p.y,
+      10,
+      0,
+      Math.PI * 2
+    );
+
     ctx.fill();
   }
 
-  /* YOU */
+  /* CURRENT PLAYER */
+
   ctx.fillStyle = "#fff";
 
   ctx.beginPath();
-  ctx.arc(player.x,player.y,10,0,Math.PI*2);
-  ctx.fill();
 
-  drawMonster();
+  ctx.arc(
+    player.x,
+    player.y,
+    10,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
 
   ctx.restore();
 }
@@ -403,13 +374,11 @@ function loop(t){
 
   if(!started) return;
 
-  const dt = (t-last)/1000;
+  const dt = (t - last) / 1000;
 
   last = t;
 
   move(dt);
-
-  updateMonster(dt);
 
   draw();
 
@@ -442,13 +411,17 @@ addEventListener("keydown",e=>{
       }
 
       chat.value = "";
+
       chat.style.display = "none";
+
       chatOpen = false;
 
     }else{
 
       chat.style.display = "block";
+
       chat.focus();
+
       chatOpen = true;
     }
 
@@ -459,6 +432,7 @@ addEventListener("keydown",e=>{
 });
 
 addEventListener("keyup",e=>{
+
   keys[e.key.toLowerCase()] = false;
 });
 
@@ -487,6 +461,7 @@ join.onclick = ()=>{
 };
 
 start.onclick = ()=>{
+
   socket.emit("startPartyGame");
 };
 
@@ -539,7 +514,9 @@ socket.on("chat",d=>{
   clearTimeout(window.chatTimer);
 
   window.chatTimer = setTimeout(()=>{
+
     msg.innerHTML = "";
+
   },4000);
 });
 
