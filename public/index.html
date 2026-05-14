@@ -188,6 +188,7 @@ const keys = {};
 
 let started = false;
 let chatOpen = false;
+let gameOver = false;
 
 const COLORS = [
   "#ff4444",
@@ -415,10 +416,9 @@ let sent = 0;
 
 function loop(t){
 
-  if(!started) return;
+  if(!started || gameOver) return;
 
-  const dt = (t-last)/1000;
-
+  const dt = (t - last) / 1000;
   last = t;
 
   move(dt);
@@ -427,7 +427,26 @@ function loop(t){
 
   draw();
 
-  if(t-sent > 33){
+  /* GAME OVER CHECK */
+  const dist = Math.hypot(
+    player.x - monster.x,
+    player.y - monster.y
+  );
+
+  if(dist < 18){
+    gameOver = true;
+
+    menu.style.display = "flex";
+
+    menu.innerHTML = `
+      <h1 style="color:red">YOU WERE CAUGHT</h1>
+      <button onclick="location.reload()">RESTART</button>
+    `;
+
+    return;
+  }
+
+  if(t - sent > 33){
 
     socket.emit("move",{
       x:player.x,
