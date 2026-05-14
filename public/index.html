@@ -281,17 +281,17 @@ function updateMonster(dt){
 
   const speed = monster.speed * dt;
 
-  let vx = Math.cos(monster.angle) * speed;
-  let vy = Math.sin(monster.angle) * speed;
+  const vx = Math.cos(monster.angle) * speed;
+  const vy = Math.sin(monster.angle) * speed;
 
-  // try full move first
+  // full move attempt
   if(!wall(monster.x + vx, monster.y + vy)){
     monster.x += vx;
     monster.y += vy;
     return;
   }
 
-  // try axis movement separately (but keep momentum feel)
+  // axis slide
   let moved = false;
 
   if(!wall(monster.x + vx, monster.y)){
@@ -304,24 +304,26 @@ function updateMonster(dt){
     moved = true;
   }
 
-  // 🔥 emergency escape if fully blocked (prevents freezing forever)
+  // SAFE STUCK FIX (no teleporting into walls)
   if(!moved){
-    const escape = [
-      [1,0],[-1,0],[0,1],[0,-1],
-      [1,1],[1,-1],[-1,1],[-1,-1]
-    ];
 
-    const dir = escape[Math.floor(Math.random() * escape.length)];
+    // step back along opposite direction until valid space found
+    const backStep = 2;
 
-    const ex = monster.x + dir[0] * 2;
-    const ey = monster.y + dir[1] * 2;
+    for(let i = 0; i < 5; i++){
 
-    if(!wall(ex, ey)){
-      monster.x = ex;
-      monster.y = ey;
+      const bx = monster.x - Math.cos(monster.angle) * backStep * i;
+      const by = monster.y - Math.sin(monster.angle) * backStep * i;
+
+      if(!wall(bx, by)){
+        monster.x = bx;
+        monster.y = by;
+        break;
+      }
     }
   }
 }
+
 /* DRAW */
 
 function draw(){
