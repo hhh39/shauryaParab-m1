@@ -5,14 +5,85 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>STATIC LINE</title>
 
+<link rel="icon" href="https://wallpapers.com/images/featured/ghostface-pictures-ofyz28an49x5071b.jpg">
+
 <style>
-body{margin:0;overflow:hidden;background:#000;color:#2affaa;font-family:monospace}
-canvas{display:block}
-#menu{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px}
-input,button{width:260px;padding:10px;font-size:16px}
-button{background:#2affaa;border:0;color:#000;font-weight:bold}
-#chat{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:none;width:400px}
-#msg{position:fixed;top:10px;left:10px;width:300px}
+body{
+  margin:0;
+  overflow:hidden;
+  background:#000;
+  color:#2affaa;
+  font-family:monospace;
+}
+
+canvas{
+  display:block;
+}
+
+#menu{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  background:#000;
+  z-index:5;
+}
+
+input,button{
+  width:260px;
+  padding:10px;
+  font-size:16px;
+}
+
+button{
+  background:#2affaa;
+  border:0;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+#chat{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  display:none;
+  width:400px;
+  z-index:4;
+}
+
+#msg{
+  position:fixed;
+  top:10px;
+  left:10px;
+  width:300px;
+  z-index:4;
+}
+
+#players{
+  position:fixed;
+  right:10px;
+  top:10px;
+  width:220px;
+  background:rgba(0,0,0,0.75);
+  padding:10px;
+  border:2px solid #ffd700;
+  color:white;
+  z-index:4;
+}
+
+#players h3{
+  margin:0 0 10px 0;
+  color:#ffd700;
+}
+
+.playerItem{
+  margin:4px 0;
+}
 </style>
 </head>
 
@@ -20,23 +91,37 @@ button{background:#2affaa;border:0;color:#000;font-weight:bold}
 
 <div id="menu">
   <h1>STATIC LINE</h1>
+
   <input id="username" placeholder="USERNAME">
+
   <button id="create">CREATE</button>
+
   <input id="code" placeholder="CODE">
+
   <button id="join">JOIN</button>
+
   <button id="start" style="display:none">START</button>
+
   <div id="party"></div>
 </div>
 
+<div id="players">
+  <h3>PLAYERS</h3>
+  <div id="playerList"></div>
+</div>
+
 <div id="msg"></div>
+
 <input id="chat">
 
 <canvas id="c"></canvas>
 
 <script src="/socket.io/socket.io.js"></script>
+
 <script>
 
 const socket = io();
+
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 
@@ -44,40 +129,88 @@ function resize(){
   c.width = innerWidth;
   c.height = innerHeight;
 }
+
 resize();
+
 addEventListener("resize", resize);
 
 const TILE = 64;
 
+/* MASSIVE MAZE */
 const map = [
-"####################",
-"#..................#",
-"#....######........#",
-"#..................#",
-"#.............######",
-"#..................#",
-"#....######........#",
-"#..................#",
-"#..........####....#",
-"#..................#",
-"#....######........#",
-"#..................#",
-"#..........####....#",
-"#..................#",
-"#..................#",
-"####################"
+"############################################################",
+"#..............#.......................#...................#",
+"#.######.######.###########.#########..#.#########.#########",
+"#.#....#........#.........#.#.......#..#.........#.........#",
+"#.#.##.##########.#######.#.#.#####.#.##########.#########.#",
+"#.#.#.............#.....#.#.#.....#.#..........#.#.......#.#",
+"#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#",
+"#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#",
+"#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#",
+"#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#",
+"#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#",
+"#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#",
+"#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#",
+"#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#",
+"#.#####.#############.#.#.#.##########.#.#.#.#.#.#.#####.#.#",
+"#.....#...............#.#.#............#.#.#.#.#.#.#.....#.#",
+"#####.#################.#.##############.#.#.#.#.#.#.#####.#",
+"#.......................#................#...#...#.........#",
+"############################################################"
 ];
 
-const player = {x:128,y:128,angle:0,speed:220};
+const player = {
+  x:128,
+  y:128,
+  angle:0,
+  speed:230
+};
+
 const others = new Map();
+
 const keys = {};
 
 let started = false;
 let chatOpen = false;
 
+const COLORS = [
+  "#ff4444",
+  "#44ff44",
+  "#4488ff",
+  "#ff44ff",
+  "#ffaa00",
+  "#00ffff",
+  "#ff8888",
+  "#88ff88"
+];
+
+function playerColor(id){
+
+  if(id === socket.id){
+    return "#ffffff";
+  }
+
+  let hash = 0;
+
+  for(let i=0;i<id.length;i++){
+    hash += id.charCodeAt(i);
+  }
+
+  return COLORS[hash % COLORS.length];
+}
+
+const monster = {
+  x: 1800,
+  y: 700,
+  angle: 0,
+  speed: 120
+};
+
 function wall(x,y){
-  const mx = Math.floor(x/TILE);
-  const my = Math.floor(y/TILE);
+
+  const mx = Math.floor(x / TILE);
+  const my = Math.floor(y / TILE);
+
   return !map[my] || map[my][mx] === "#";
 }
 
@@ -85,47 +218,107 @@ function move(dt){
 
   if(chatOpen) return;
 
+  let moveX = 0;
+  let moveY = 0;
+
   const cos = Math.cos(player.angle);
   const sin = Math.sin(player.angle);
 
-  let dx = 0;
-  let dy = 0;
-
-  // forward / back
-  if(keys.w || keys.arrowup){
-    dx += cos;
-    dy += sin;
+  /* FORWARD */
+  if(keys.w){
+    moveX += cos;
+    moveY += sin;
   }
 
-  if(keys.s || keys.arrowdown){
-    dx -= cos;
-    dy -= sin;
+  /* BACK */
+  if(keys.s){
+    moveX -= cos;
+    moveY -= sin;
   }
 
-  // strafe (PERPENDICULAR, correct handed system)
-  if(keys.d || keys.arrowright){
-    dx += -sin;
-    dy += cos;
+  /* FIXED STRAFING */
+  if(keys.a){
+    moveX += sin;
+    moveY -= cos;
   }
 
-  if(keys.a || keys.arrowleft){
-    dx += sin;
-    dy -= cos;
+  if(keys.d){
+    moveX -= sin;
+    moveY += cos;
   }
 
-  // IMPORTANT: do NOT normalize movement
+  const len = Math.hypot(moveX, moveY);
 
-  dx *= player.speed * dt;
-  dy *= player.speed * dt;
-
-  // axis-separated collision (this is key)
-  if(!wall(player.x + dx, player.y)){
-    player.x += dx;
+  if(len > 0){
+    moveX /= len;
+    moveY /= len;
   }
 
-  if(!wall(player.x, player.y + dy)){
-    player.y += dy;
+  moveX *= player.speed * dt;
+  moveY *= player.speed * dt;
+
+  if(!wall(player.x + moveX, player.y)){
+    player.x += moveX;
   }
+
+  if(!wall(player.x, player.y + moveY)){
+    player.y += moveY;
+  }
+}
+
+function updateMonster(dt){
+
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
+
+  const dist = Math.hypot(dx, dy);
+
+  if(dist > 1){
+
+    monster.angle = Math.atan2(dy, dx);
+
+    const mx = Math.cos(monster.angle) * monster.speed * dt;
+    const my = Math.sin(monster.angle) * monster.speed * dt;
+
+    if(!wall(monster.x + mx, monster.y)){
+      monster.x += mx;
+    }
+
+    if(!wall(monster.x, monster.y + my)){
+      monster.y += my;
+    }
+  }
+}
+
+function drawMonster(){
+
+  ctx.save();
+
+  ctx.translate(monster.x, monster.y);
+  ctx.rotate(monster.angle);
+
+  /* BLACK TRIANGLE */
+  ctx.fillStyle = "#000";
+
+  ctx.beginPath();
+  ctx.moveTo(18,0);
+  ctx.lineTo(-14,-12);
+  ctx.lineTo(-14,12);
+  ctx.closePath();
+  ctx.fill();
+
+  /* RED EYES */
+  ctx.fillStyle = "red";
+
+  ctx.beginPath();
+  ctx.arc(2,-4,2,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(2,4,2,0,Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
 }
 
 function draw(){
@@ -133,122 +326,231 @@ function draw(){
   ctx.clearRect(0,0,c.width,c.height);
 
   ctx.save();
-  ctx.translate(c.width/2-player.x,c.height/2-player.y);
 
+  ctx.translate(
+    c.width/2 - player.x,
+    c.height/2 - player.y
+  );
+
+  /* MAP */
   for(let y=0;y<map.length;y++){
+
     for(let x=0;x<map[y].length;x++){
-      ctx.fillStyle = map[y][x]=="#"?"#2affaa":"#111";
-      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+
+      if(map[y][x] === "#"){
+        ctx.fillStyle = "#d4af37"; /* GOLD WALLS */
+      }else{
+        ctx.fillStyle = "#fff6bf"; /* PALE YELLOW FLOOR */
+      }
+
+      ctx.fillRect(
+        x*TILE,
+        y*TILE,
+        TILE,
+        TILE
+      );
     }
   }
 
-  ctx.fillStyle="#fff";
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,10,0,Math.PI*2);
-  ctx.fill();
-
+  /* OTHER PLAYERS */
   for(const p of others.values()){
-    ctx.fillStyle="#f44";
+
+    ctx.fillStyle = playerColor(p.id);
+
     ctx.beginPath();
     ctx.arc(p.x,p.y,10,0,Math.PI*2);
     ctx.fill();
   }
 
+  /* YOU */
+  ctx.fillStyle = "#fff";
+
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,10,0,Math.PI*2);
+  ctx.fill();
+
+  drawMonster();
+
   ctx.restore();
 }
 
-let last=performance.now(),sent=0;
+function updatePlayerList(players){
+
+  const list = document.getElementById("playerList");
+
+  list.innerHTML = "";
+
+  players.forEach(p=>{
+
+    const div = document.createElement("div");
+
+    div.className = "playerItem";
+
+    div.style.color = playerColor(p.id);
+
+    div.textContent =
+      p.username +
+      (p.id === socket.id ? " (YOU)" : "");
+
+    list.appendChild(div);
+  });
+}
+
+let last = performance.now();
+let sent = 0;
 
 function loop(t){
+
   if(!started) return;
 
-  const dt=(t-last)/1000;
-  last=t;
+  const dt = (t-last)/1000;
+
+  last = t;
 
   move(dt);
+
+  updateMonster(dt);
+
   draw();
 
-  if(t-sent>33){
-    socket.emit("move",{x:player.x,y:player.y,angle:player.angle});
-    sent=t;
+  if(t - sent > 33){
+
+    socket.emit("move",{
+      x:player.x,
+      y:player.y,
+      angle:player.angle
+    });
+
+    sent = t;
   }
 
   requestAnimationFrame(loop);
 }
 
 addEventListener("keydown",e=>{
-  const k=e.key.toLowerCase();
 
-  if(k==="enter"){
+  const k = e.key.toLowerCase();
+
+  if(k === "enter"){
+
     if(chatOpen){
-      const v=chat.value.trim();
-      if(v) socket.emit("chat",v);
-      chat.value="";
-      chat.style.display="none";
-      chatOpen=false;
+
+      const v = chat.value.trim();
+
+      if(v){
+        socket.emit("chat",v);
+      }
+
+      chat.value = "";
+      chat.style.display = "none";
+      chatOpen = false;
+
     }else{
-      chat.style.display="block";
+
+      chat.style.display = "block";
       chat.focus();
-      chatOpen=true;
+      chatOpen = true;
     }
+
     return;
   }
 
-  keys[k]=true;
+  keys[k] = true;
 });
 
 addEventListener("keyup",e=>{
-  keys[e.key.toLowerCase()]=false;
+  keys[e.key.toLowerCase()] = false;
 });
 
 addEventListener("mousemove",e=>{
-  if(!started||chatOpen) return;
-  player.angle+=e.movementX*0.0025;
+
+  if(!started || chatOpen) return;
+
+  player.angle += e.movementX * 0.0025;
 });
 
-document.getElementById("create").onclick=()=>{
-  const u=username.value.trim();
-  if(!u)return;
+create.onclick = ()=>{
+
+  const u = username.value.trim();
+
+  if(!u) return;
+
   socket.emit("createParty",u);
 };
 
-document.getElementById("join").onclick=()=>{
+join.onclick = ()=>{
+
   socket.emit("joinParty",{
     username:username.value,
     code:code.value
   });
 };
 
-document.getElementById("start").onclick=()=>{
+start.onclick = ()=>{
   socket.emit("startPartyGame");
 };
 
 socket.on("partyCreated",c=>{
-  document.getElementById("party").textContent="CODE: "+c;
-  document.getElementById("start").style.display="block";
+
+  party.textContent = "CODE: " + c;
+
+  start.style.display = "block";
 });
 
 socket.on("partyJoined",c=>{
-  document.getElementById("party").textContent="CODE: "+c;
+
+  party.textContent = "CODE: " + c;
 });
 
 socket.on("players",p=>{
+
   others.clear();
+
   p.forEach(x=>{
-    if(x.id!==socket.id) others.set(x.id,x);
+
+    if(x.id !== socket.id){
+
+      others.set(x.id,x);
+    }
   });
+
+  updatePlayerList(p);
 });
 
 socket.on("playerMoved",d=>{
-  const p=others.get(d.id);
-  if(!p)return;
-  p.x=d.x;p.y=d.y;p.angle=d.angle;
+
+  const p = others.get(d.id);
+
+  if(!p) return;
+
+  p.x = d.x;
+  p.y = d.y;
+  p.angle = d.angle;
+});
+
+socket.on("chat",d=>{
+
+  msg.innerHTML =
+    "<b>" +
+    d.username +
+    ":</b> " +
+    d.text;
+
+  clearTimeout(window.chatTimer);
+
+  window.chatTimer = setTimeout(()=>{
+    msg.innerHTML = "";
+  },4000);
 });
 
 socket.on("gameStarted",()=>{
-  document.getElementById("menu").style.display="none";
-  started=true;
-  last=performance.now();
+
+  menu.style.display = "none";
+
+  started = true;
+
+  last = performance.now();
+
   requestAnimationFrame(loop);
 });
 
