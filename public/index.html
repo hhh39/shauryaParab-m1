@@ -91,6 +91,24 @@ button{
 </head>
 
 <body>
+  <div id="gameOver" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);
+  color:red;
+  font-size:40px;
+  font-family:monospace;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  z-index:999;
+">
+  <div>YOU WERE CAUGHT</div>
+  <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;font-size:18px">
+    RESTART
+  </button>
+</div>
 
 <div id="menu">
 
@@ -421,10 +439,13 @@ function loop(t){
   const dt = (t - last) / 1000;
   last = t;
 
+  /* UPDATE PLAYER */
   move(dt);
 
+  /* UPDATE MONSTER */
   updateMonster(dt);
 
+  /* RENDER */
   draw();
 
   /* GAME OVER CHECK */
@@ -434,24 +455,21 @@ function loop(t){
   );
 
   if(dist < 18){
+
     gameOver = true;
 
-    menu.style.display = "flex";
-
-    menu.innerHTML = `
-      <h1 style="color:red">YOU WERE CAUGHT</h1>
-      <button onclick="location.reload()">RESTART</button>
-    `;
+    document.getElementById("gameOver").style.display = "flex";
 
     return;
   }
 
+  /* SEND POSITION (NETWORK) */
   if(t - sent > 33){
 
     socket.emit("move",{
-      x:player.x,
-      y:player.y,
-      angle:player.angle
+      x: player.x,
+      y: player.y,
+      angle: player.angle
     });
 
     sent = t;
