@@ -275,29 +275,33 @@ function updateMonster(dt){
   const dy = player.y - monster.y;
 
   const dist = Math.hypot(dx, dy);
-
   if (dist === 0) return;
 
   monster.angle = Math.atan2(dy, dx);
 
-  const vx = Math.cos(monster.angle) * monster.speed * dt;
-  const vy = Math.sin(monster.angle) * monster.speed * dt;
+  const speed = monster.speed * dt;
 
-  // try X movement
+  const vx = Math.cos(monster.angle) * speed;
+  const vy = Math.sin(monster.angle) * speed;
+
+  // try full move first
+  if(!wall(monster.x + vx, monster.y + vy)){
+    monster.x += vx;
+    monster.y += vy;
+    return;
+  }
+
+  // otherwise try sliding on X axis
   if(!wall(monster.x + vx, monster.y)){
     monster.x += vx;
-  } else {
-    // small slide/random nudge when stuck
-    monster.x += (Math.random() - 0.5) * 2;
   }
 
-  // try Y movement
+  // and sliding on Y axis
   if(!wall(monster.x, monster.y + vy)){
     monster.y += vy;
-  } else {
-    monster.y += (Math.random() - 0.5) * 2;
   }
 }
+
 /* DRAW */
 
 function draw(){
