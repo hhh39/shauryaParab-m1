@@ -7,41 +7,64 @@
 <title>STATIC LINE</title>
 
 <link rel="icon" href="https://wallpapers.com/images/featured/ghostface-pictures-ofyz28an49x5071b.jpg">
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-
-<title>STATIC LINE</title>
-
-<link rel="icon" href="https://wallpapers.com/images/featured/ghostface-pictures-ofyz28an49x5071b.jpg">
 
 <style>
-body{margin:0;overflow:hidden;background:#000;font-family:monospace;color:#2affaa}
+
+body{
+  margin:0;
+  overflow:hidden;
+  background:#000;
+  font-family:monospace;
+}
+
 canvas{display:block}
 
 #menu{
-  position:fixed;inset:0;
-  display:flex;flex-direction:column;
-  justify-content:center;align-items:center;
-  gap:10px;background:#000;z-index:5;
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  background:#000;
+  z-index:10;
 }
 
-input,button{width:260px;padding:10px;font-size:16px}
-button{background:#2affaa;border:0;color:#000;font-weight:bold;cursor:pointer}
+input,button{
+  width:260px;
+  padding:10px;
+  font-size:16px;
+}
+
+button{
+  background:#2affaa;
+  border:0;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
 
 #players{
-  position:fixed;top:10px;right:10px;
-  width:220px;background:rgba(0,0,0,0.8);
-  border:2px solid gold;padding:10px;z-index:10;
+  position:fixed;
+  top:10px;
+  right:10px;
+  width:220px;
+  background:rgba(0,0,0,0.8);
+  border:2px solid gold;
+  padding:10px;
+  z-index:5;
 }
 
-.playerItem{margin:4px 0}
+.playerItem{
+  margin:4px 0;
+  color:white;
+}
 
 #gameOver{
   display:none;
-  position:fixed;inset:0;
+  position:fixed;
+  inset:0;
   background:rgba(0,0,0,0.85);
   color:red;
   font-size:40px;
@@ -50,22 +73,29 @@ button{background:#2affaa;border:0;color:#000;font-weight:bold;cursor:pointer}
   flex-direction:column;
   z-index:999;
 }
+
 </style>
 </head>
 
 <body>
 
 <div id="menu">
-  <h1>STATIC LINE</h1>
-  <input id="username">
+  <h1 style="color:#2affaa">STATIC LINE</h1>
+
+  <input id="username" placeholder="USERNAME">
   <button id="create">CREATE</button>
-  <input id="code">
+
+  <input id="code" placeholder="CODE">
   <button id="join">JOIN</button>
+
   <button id="start" style="display:none">START</button>
+
   <div id="party"></div>
 </div>
 
-<div id="players"><div id="playerList"></div></div>
+<div id="players">
+  <div id="playerList"></div>
+</div>
 
 <div id="gameOver">
   <div>YOU WERE CAUGHT</div>
@@ -79,10 +109,30 @@ button{background:#2affaa;border:0;color:#000;font-weight:bold;cursor:pointer}
 <script>
 
 const socket = io();
+
+/* DOM */
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
 
-let started=false,gameOver=false,alive=true;
+const menu = document.getElementById("menu");
+const usernameEl = document.getElementById("username");
+const codeEl = document.getElementById("code");
+const partyEl = document.getElementById("party");
+const startBtn = document.getElementById("start");
+const playerList = document.getElementById("playerList");
+const gameOverUI = document.getElementById("gameOver");
+
+/* RESIZE */
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
+}
+resize();
+addEventListener("resize", resize);
+
+/* GAME STATE */
+let started=false;
+let alive=true;
 
 const TILE=64;
 
@@ -97,17 +147,19 @@ const map=[
 ];
 
 const player={x:128,y:128,angle:0,speed:260};
-const monster={x:400,y:300,speed:120,angle:0};
+
+const monster={x:400,y:300,angle:0,speed:120};
+
 const others=new Map();
 const keys={};
 
 function wall(x,y){
   const mx=Math.floor(x/TILE);
   const my=Math.floor(y/TILE);
-  return !map[my]||map[my][mx]==="#";
+  return !map[my] || map[my][mx]==="#";
 }
 
-/* FIXED MOVEMENT */
+/* MOVEMENT (FIXED) */
 function move(dt){
 
   if(!alive) return;
@@ -120,7 +172,11 @@ function move(dt){
   if(keys.d)dx+=1;
 
   const len=Math.hypot(dx,dy);
-  if(len>0){dx/=len;dy/=len;}
+
+  if(len>0){
+    dx/=len;
+    dy/=len;
+  }
 
   dx*=player.speed*dt;
   dy*=player.speed*dt;
@@ -129,6 +185,7 @@ function move(dt){
   if(!wall(player.x,player.y+dy))player.y+=dy;
 }
 
+/* MONSTER */
 function updateMonster(dt){
 
   const dx=player.x-monster.x;
@@ -140,6 +197,7 @@ function updateMonster(dt){
   monster.y+=Math.sin(monster.angle)*monster.speed*dt;
 }
 
+/* DRAW */
 function draw(){
 
   ctx.clearRect(0,0,c.width,c.height);
@@ -150,7 +208,10 @@ function draw(){
   for(let y=0;y<map.length;y++){
     for(let x=0;x<map[y].length;x++){
 
-      ctx.fillStyle=map[y][x]=="#"?"#d4af37":"#fff6bf";
+      ctx.fillStyle=map[y][x]==="#"
+        ? "#d4af37"
+        : "#fff6bf";
+
       ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
     }
   }
@@ -179,22 +240,24 @@ function draw(){
   ctx.restore();
 }
 
+/* PLAYER LIST */
 function updateList(players){
-  const list=document.getElementById("playerList");
-  list.innerHTML="";
+  playerList.innerHTML="";
   players.forEach(p=>{
-    const d=document.createElement("div");
-    d.className="playerItem";
-    d.textContent=p.username+(p.alive?"":" (SPECTATOR)");
-    list.appendChild(d);
+    const div=document.createElement("div");
+    div.className="playerItem";
+    div.textContent=p.username+(p.alive?"":" (SPECTATOR)");
+    playerList.appendChild(div);
   });
 }
 
-let last=performance.now(),sent=0;
+/* LOOP */
+let last=performance.now();
+let sent=0;
 
 function loop(t){
 
-  if(!started||gameOver) return;
+  if(!started) return;
 
   const dt=(t-last)/1000;
   last=t;
@@ -208,7 +271,7 @@ function loop(t){
   if(dist<18 && alive){
     alive=false;
     socket.emit("died");
-    document.getElementById("gameOver").style.display="flex";
+    gameOverUI.style.display="flex";
     return;
   }
 
@@ -228,622 +291,43 @@ addEventListener("mousemove",e=>{
   if(started) player.angle+=e.movementX*0.0025;
 });
 
+/* BUTTONS (FIXED) */
+document.getElementById("create").onclick=()=>{
+  const u=usernameEl.value.trim();
+  if(!u) return;
+  socket.emit("createParty",u);
+};
+
+document.getElementById("join").onclick=()=>{
+  socket.emit("joinParty",{
+    username:usernameEl.value,
+    code:codeEl.value
+  });
+};
+
+startBtn.onclick=()=>{
+  socket.emit("startPartyGame");
+};
+
 /* SOCKET */
-socket.on("players",p=>updateList(p));
+socket.on("players",p=>{
+  updateList(p);
+});
+
+socket.on("partyCreated",c=>{
+  partyEl.textContent="CODE: "+c;
+  startBtn.style.display="block";
+});
+
+socket.on("partyJoined",c=>{
+  partyEl.textContent="CODE: "+c;
+});
 
 socket.on("gameStarted",()=>{
   menu.style.display="none";
   started=true;
   alive=true;
   last=performance.now();
-  requestAnimationFrame(loop);
-});
-
-create.onclick=()=>socket.emit("createParty",username.value);
-join.onclick=()=>socket.emit("joinParty",{username:username.value,code:code.value});
-start.onclick=()=>socket.emit("startPartyGame");
-
-</script>
-
-</body>
-</html>
-<style>
-
-body{
-  margin:0;
-  overflow:hidden;
-  background:#000;
-  color:#2affaa;
-  font-family:monospace;
-}
-
-canvas{
-  display:block;
-}
-
-#menu{
-  position:fixed;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:10px;
-  background:#000;
-  z-index:5;
-}
-
-input,button{
-  width:260px;
-  padding:10px;
-  font-size:16px;
-}
-
-button{
-  background:#2affaa;
-  border:0;
-  color:#000;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-#chat{
-  position:fixed;
-  bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
-  width:400px;
-  display:none;
-  z-index:4;
-}
-
-#msg{
-  position:fixed;
-  top:10px;
-  left:10px;
-  width:300px;
-  z-index:4;
-  color:white;
-}
-
-#players{
-  position:fixed;
-  top:10px;
-  right:10px;
-  width:220px;
-  background:rgba(0,0,0,0.8);
-  border:2px solid gold;
-  padding:10px;
-  z-index:10;
-}
-
-#players h3{
-  margin:0 0 10px 0;
-  color:gold;
-}
-
-.playerItem{
-  margin:4px 0;
-}
-
-</style>
-</head>
-
-<body>
-  <div id="gameOver" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.85);
-  color:red;
-  font-size:40px;
-  font-family:monospace;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
-  z-index:999;
-">
-  <div>YOU WERE CAUGHT</div>
-  <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;font-size:18px">
-    RESTART
-  </button>
-</div>
-
-<div id="menu">
-
-  <h1>STATIC LINE</h1>
-
-  <input id="username" placeholder="USERNAME">
-
-  <button id="create">CREATE</button>
-
-  <input id="code" placeholder="CODE">
-
-  <button id="join">JOIN</button>
-
-  <button id="start" style="display:none">START</button>
-
-  <div id="party"></div>
-
-</div>
-
-<div id="players">
-
-  <h3>PLAYERS</h3>
-
-  <div id="playerList"></div>
-
-</div>
-
-<div id="msg"></div>
-
-<input id="chat">
-
-<canvas id="c"></canvas>
-
-<script src="/socket.io/socket.io.js"></script>
-
-<script>
-
-const socket = io();
-
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-
-function resize(){
-  c.width = innerWidth;
-  c.height = innerHeight;
-}
-
-resize();
-
-addEventListener("resize", resize);
-
-const TILE = 64;
-
-const map = [
-
-"############################################################",
-"#..............#.......................#...................#",
-"#.######.######.###########.#########..#.#########.#########",
-"#.#....#........#.........#.#.......#..#.........#.........#",
-"#.#.##.##########.#######.#.#.#####.#.##########.#########.#",
-"#.#.#.............#.....#.#.#.....#.#..........#.#.......#.#",
-"#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#",
-"#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#",
-"#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#",
-"#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#",
-"#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#",
-"#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#",
-"#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#",
-"#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#",
-"#.#####.#############.#.#.#.##########.#.#.#.#.#.#.#####.#.#",
-"#.....#...............#.#.#............#.#.#.#.#.#.#.....#.#",
-"#####.#################.#.##############.#.#.#.#.#.#.#####.#",
-"#.......................#................#...#...#.........#",
-"############################################################"
-
-];
-
-const player = {
-  x:128,
-  y:128,
-  angle:0,
-  speed:260
-};
-
-const monster = {
-  x:2000,
-  y:700,
-  angle:0,
-  speed:110
-};
-
-const others = new Map();
-
-const keys = {};
-
-let started = false;
-let chatOpen = false;
-let gameOver = false;
-
-const COLORS = [
-  "#ff4444",
-  "#44ff44",
-  "#4488ff",
-  "#ff44ff",
-  "#ffaa00",
-  "#00ffff",
-  "#ff8888",
-  "#88ff88"
-];
-
-function playerColor(id){
-
-  if(id === socket.id){
-    return "#ffffff";
-  }
-
-  let hash = 0;
-
-  for(let i=0;i<id.length;i++){
-    hash += id.charCodeAt(i);
-  }
-
-  return COLORS[hash % COLORS.length];
-}
-
-function wall(x,y){
-
-  const mx = Math.floor(x/TILE);
-  const my = Math.floor(y/TILE);
-
-  return !map[my] || map[my][mx] === "#";
-}
-
-/* FIXED MOVEMENT */
-
-function move(dt){
-
-  if(chatOpen) return;
-
-  let dx = 0;
-  let dy = 0;
-
-  /* TRUE DIRECTIONAL MOVEMENT */
-
-  if(keys.w){
-    dy -= 1;
-  }
-
-  if(keys.s){
-    dy += 1;
-  }
-
-  if(keys.a){
-    dx -= 1;
-  }
-
-  if(keys.d){
-    dx += 1;
-  }
-
-  const len = Math.hypot(dx,dy);
-
-  if(len > 0){
-    dx /= len;
-    dy /= len;
-  }
-
-  dx *= player.speed * dt;
-  dy *= player.speed * dt;
-
-  if(!wall(player.x + dx, player.y)){
-    player.x += dx;
-  }
-
-  if(!wall(player.x, player.y + dy)){
-    player.y += dy;
-  }
-}
-
-function updateMonster(dt){
-
-  const dx = player.x - monster.x;
-  const dy = player.y - monster.y;
-
-  const dist = Math.hypot(dx,dy);
-
-  if(dist > 5){
-
-    monster.angle = Math.atan2(dy,dx);
-
-    const mx = Math.cos(monster.angle) * monster.speed * dt;
-    const my = Math.sin(monster.angle) * monster.speed * dt;
-
-    if(!wall(monster.x + mx, monster.y)){
-      monster.x += mx;
-    }
-
-    if(!wall(monster.x, monster.y + my)){
-      monster.y += my;
-    }
-  }
-}
-
-function drawMonster(){
-
-  ctx.save();
-
-  ctx.translate(monster.x, monster.y);
-
-  ctx.rotate(monster.angle);
-
-  ctx.fillStyle = "#000";
-
-  ctx.beginPath();
-  ctx.moveTo(18,0);
-  ctx.lineTo(-14,-12);
-  ctx.lineTo(-14,12);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.fillStyle = "red";
-
-  ctx.beginPath();
-  ctx.arc(0,-4,2,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(0,4,2,0,Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function draw(){
-
-  ctx.clearRect(0,0,c.width,c.height);
-
-  ctx.save();
-
-  ctx.translate(
-    c.width/2 - player.x,
-    c.height/2 - player.y
-  );
-
-  for(let y=0;y<map.length;y++){
-
-    for(let x=0;x<map[y].length;x++){
-
-      ctx.fillStyle =
-        map[y][x] === "#"
-        ? "#d4af37"
-        : "#fff6bf";
-
-      ctx.fillRect(
-        x*TILE,
-        y*TILE,
-        TILE,
-        TILE
-      );
-    }
-  }
-
-  for(const p of others.values()){
-
-    ctx.fillStyle = playerColor(p.id);
-
-    ctx.beginPath();
-
-    ctx.arc(
-      p.x,
-      p.y,
-      10,
-      0,
-      Math.PI*2
-    );
-
-    ctx.fill();
-  }
-
-  ctx.fillStyle = "#fff";
-
-  ctx.beginPath();
-
-  ctx.arc(
-    player.x,
-    player.y,
-    10,
-    0,
-    Math.PI*2
-  );
-
-  ctx.fill();
-
-  drawMonster();
-
-  ctx.restore();
-}
-
-function updatePlayerList(players){
-
-  const list = document.getElementById("playerList");
-
-  list.innerHTML = "";
-
-  players.forEach(p=>{
-
-    const div = document.createElement("div");
-
-    div.className = "playerItem";
-
-    div.style.color = playerColor(p.id);
-
-    div.textContent =
-      p.username +
-      (p.id === socket.id ? " (YOU)" : "");
-
-    list.appendChild(div);
-  });
-}
-
-let last = performance.now();
-let sent = 0;
-
-function loop(t){
-
-  if(!started || gameOver) return;
-
-  const dt = (t - last) / 1000;
-  last = t;
-
-  /* UPDATE PLAYER */
-  move(dt);
-
-  /* UPDATE MONSTER */
-  updateMonster(dt);
-
-  /* RENDER */
-  draw();
-
-  /* GAME OVER CHECK */
-  const dist = Math.hypot(
-    player.x - monster.x,
-    player.y - monster.y
-  );
-
-  if(dist < 18){
-
-    gameOver = true;
-
-    document.getElementById("gameOver").style.display = "flex";
-
-    return;
-  }
-
-  /* SEND POSITION (NETWORK) */
-  if(t - sent > 33){
-
-    socket.emit("move",{
-      x: player.x,
-      y: player.y,
-      angle: player.angle
-    });
-
-    sent = t;
-  }
-
-  requestAnimationFrame(loop);
-}
-
-addEventListener("keydown",e=>{
-
-  const k = e.key.toLowerCase();
-
-  if(k === "enter"){
-
-    if(chatOpen){
-
-      const v = chat.value.trim();
-
-      if(v){
-        socket.emit("chat",v);
-      }
-
-      chat.value = "";
-
-      chat.style.display = "none";
-
-      chatOpen = false;
-
-    }else{
-
-      chat.style.display = "block";
-
-      chat.focus();
-
-      chatOpen = true;
-    }
-
-    return;
-  }
-
-  keys[k] = true;
-});
-
-addEventListener("keyup",e=>{
-  keys[e.key.toLowerCase()] = false;
-});
-
-addEventListener("mousemove",e=>{
-
-  if(!started || chatOpen) return;
-
-  player.angle += e.movementX * 0.0025;
-});
-
-create.onclick = ()=>{
-
-  const u = username.value.trim();
-
-  if(!u) return;
-
-  socket.emit("createParty",u);
-};
-
-join.onclick = ()=>{
-
-  socket.emit("joinParty",{
-    username:username.value,
-    code:code.value
-  });
-};
-
-start.onclick = ()=>{
-  socket.emit("startPartyGame");
-};
-
-socket.on("partyCreated",c=>{
-
-  party.textContent = "CODE: " + c;
-
-  start.style.display = "block";
-});
-
-socket.on("partyJoined",c=>{
-
-  party.textContent = "CODE: " + c;
-});
-
-socket.on("players",p=>{
-
-  others.clear();
-
-  p.forEach(x=>{
-
-    if(x.id !== socket.id){
-      others.set(x.id,x);
-    }
-  });
-
-  updatePlayerList(p);
-});
-
-socket.on("playerMoved",d=>{
-
-  const p = others.get(d.id);
-
-  if(!p) return;
-
-  p.x = d.x;
-  p.y = d.y;
-  p.angle = d.angle;
-});
-
-socket.on("chat",d=>{
-
-  msg.innerHTML =
-    "<b>" +
-    d.username +
-    ":</b> " +
-    d.text;
-
-  clearTimeout(window.chatTimer);
-
-  window.chatTimer = setTimeout(()=>{
-    msg.innerHTML = "";
-  },4000);
-});
-
-socket.on("gameStarted",()=>{
-
-  menu.style.display = "none";
-
-  started = true;
-
-  last = performance.now();
-
   requestAnimationFrame(loop);
 });
 
