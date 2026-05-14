@@ -9,11 +9,21 @@
 <link rel="icon" href="https://wallpapers.com/images/featured/ghostface-pictures-ofyz28an49x5071b.jpg">
 
 <style>
-body{margin:0;overflow:hidden;background:#000;font-family:monospace}
-canvas{display:block}
+
+body{
+  margin:0;
+  overflow:hidden;
+  background:#000;
+  font-family:monospace;
+}
+
+canvas{
+  display:block;
+}
 
 #menu{
-  position:fixed;inset:0;
+  position:fixed;
+  inset:0;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -40,44 +50,56 @@ button{
   position:fixed;
   top:10px;
   right:10px;
-  width:220px;
+  width:240px;
   background:rgba(0,0,0,0.8);
   border:2px solid gold;
   padding:10px;
-  z-index:5;
+  z-index:20;
+  color:white;
 }
 
-.playerItem{margin:4px 0;color:white}
+.playerItem{
+  margin:4px 0;
+}
+
+#party{
+  color:white;
+}
 
 #gameOver{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.85);
+  background:rgba(0,0,0,0.9);
   color:red;
-  font-size:40px;
+  font-size:42px;
   justify-content:center;
   align-items:center;
   flex-direction:column;
   z-index:999;
 }
+
 </style>
 </head>
 
 <body>
 
 <div id="menu">
+
   <h1 style="color:#2affaa">STATIC LINE</h1>
 
   <input id="username" placeholder="USERNAME">
+
   <button id="create">CREATE</button>
 
   <input id="code" placeholder="CODE">
+
   <button id="join">JOIN</button>
 
   <button id="start" style="display:none">START</button>
 
   <div id="party"></div>
+
 </div>
 
 <div id="players">
@@ -86,261 +108,475 @@ button{
 
 <div id="gameOver">
   <div>YOU WERE CAUGHT</div>
-  <button onclick="location.reload()">RESTART</button>
+  <button onclick="location.reload()">
+    RESTART
+  </button>
 </div>
 
 <canvas id="c"></canvas>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <script>
 
-window.addEventListener("load", () => {
+window.addEventListener("load",()=>{
 
-  const socket = io();
+/* SOCKET */
 
-  console.log("Client loaded");
+const socket = io();
 
-  /* DOM */
-  const c = document.getElementById("c");
-  const ctx = c.getContext("2d");
+/* DOM */
 
-  const menu = document.getElementById("menu");
-  const usernameEl = document.getElementById("username");
-  const codeEl = document.getElementById("code");
-  const partyEl = document.getElementById("party");
-  const startBtn = document.getElementById("start");
-  const playerList = document.getElementById("playerList");
-  const gameOverUI = document.getElementById("gameOver");
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
 
-  /* BUTTONS (DEBUG SAFE) */
-  document.getElementById("create").addEventListener("click", () => {
-    console.log("CREATE CLICKED");
+const menu = document.getElementById("menu");
 
-    const u = usernameEl.value.trim();
-    if (!u) return;
+const usernameEl = document.getElementById("username");
+const codeEl = document.getElementById("code");
 
-    socket.emit("createParty", u);
-  });
+const partyEl = document.getElementById("party");
 
-  document.getElementById("join").addEventListener("click", () => {
-    console.log("JOIN CLICKED");
+const startBtn = document.getElementById("start");
 
-    socket.emit("joinParty", {
-      username: usernameEl.value,
-      code: codeEl.value
-    });
-  });
+const playerList = document.getElementById("playerList");
 
-  startBtn.addEventListener("click", () => {
-    console.log("START CLICKED");
-    socket.emit("startPartyGame");
-  });
+const gameOverUI = document.getElementById("gameOver");
 
-  /* DEBUG SOCKET */
-  socket.on("connect", () => {
-    console.log("Socket connected:", socket.id);
-  });
+/* CANVAS */
 
-  socket.on("connect_error", (err) => {
-    console.log("Socket error:", err);
-  });
+function resize(){
+  c.width = innerWidth;
+  c.height = innerHeight;
+}
 
-  /* RESIZE */
-  function resize(){
-    c.width = innerWidth;
-    c.height = innerHeight;
-  }
-  resize();
-  addEventListener("resize", resize);
+resize();
 
-  /* STATE */
-  let started = false;
-  let alive = true;
+addEventListener("resize",resize);
 
-  const TILE = 64;
+/* GAME STATE */
 
-  const map = [
-  "################################################################",
-  "#..............#.......................#.......................#",
-  "#.######.######.###########.#########..#.#########.###########.#",
-  "#.#....#........#.........#.#.......#..#.........#...........#.#",
-  "#.#.##.##########.#######.#.#.#####.#.##########.###########.#.#",
-  "#.#.#.............#.....#.#.#.....#.#..........#.#.........#.#.#",
-  "#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#.#.#",
-  "#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#.#.#",
-  "#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#.#.#",
-  "#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#.#.#",
-  "#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#.#.#",
-  "#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#.#.#",
-  "#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#.#.#",
-  "#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#.#.#",
-  "#.#####.#############.#.#.#.##########.#.#.#.#.#.#.#####.#.#.#.#",
-  "#...............#.......................#...............#.......#",
-  "################################################################"
-  ];
+let started = false;
+let alive = true;
 
-  const player = {x:128,y:128,angle:0,speed:260};
+const TILE = 64;
 
-  const monster = {x:2000,y:900,angle:0,speed:120};
+/* MASSIVE MAZE */
 
-  const others = new Map();
-  const keys = {};
+const map = [
 
-  function wall(x,y){
-    const mx=Math.floor(x/TILE);
-    const my=Math.floor(y/TILE);
-    return !map[my] || map[my][mx]==="#";
-  }
+"################################################################",
+"#..............#.......................#.......................#",
+"#.######.######.###########.#########..#.#########.###########.#",
+"#.#....#........#.........#.#.......#..#.........#...........#.#",
+"#.#.##.##########.#######.#.#.#####.#.##########.###########.#.#",
+"#.#.#.............#.....#.#.#.....#.#..........#.#.........#.#.#",
+"#.#.#.#############.###.#.#.#####.#.##########.#.#.#####.#.#.#.#",
+"#...#.............#...#.#.#.....#.#.#........#.#.#.....#.#.#.#.#",
+"#####.###########.###.#.#.#####.#.#.#.######.#.#.#####.#.#.#.#.#",
+"#.....#.........#.#...#.#.#.....#.#.#......#.#.#.....#.#.#.#.#.#",
+"#.#####.#######.#.#.###.#.#.#####.#.######.#.#.#####.#.#.#.#.#.#",
+"#.#.....#.......#.#...#.#.#.#.....#......#.#.#.#.....#.#.#.#.#.#",
+"#.#.#####.#######.###.#.#.#.#.##########.#.#.#.#.#####.#.#.#.#.#",
+"#.#.....#...........#.#.#.#.#..........#.#.#.#.#.#.....#.#.#.#.#",
+"#.#####.#############.#.#.#.##########.#.#.#.#.#.#.#####.#.#.#.#",
+"#...............#.......................#...............#.......#",
+"#.#############.#.#####################################.#.#####.#",
+"#.#...........#.#.....................................#.#.....#.#",
+"#.#.#########.#.#####################################.#.#####.#.#",
+"#.#.........#.#.......................................#.......#.#",
+"#.#########.#.###############################################.#.#",
+"#...........#.................................................#.#",
+"################################################################"
 
-  /* MOVEMENT */
-  function move(dt){
+];
 
-    if(!alive) return;
+/* PLAYER */
 
-    let dx=0,dy=0;
+const player = {
+  x:128,
+  y:128,
+  angle:0,
+  speed:260
+};
 
-    if(keys.w)dy-=1;
-    if(keys.s)dy+=1;
-    if(keys.a)dx-=1;
-    if(keys.d)dx+=1;
+/* MONSTER */
 
-    const len=Math.hypot(dx,dy);
-    if(len>0){dx/=len;dy/=len;}
+const monster = {
+  x:3000,
+  y:1200,
+  angle:0,
+  speed:120
+};
 
-    dx*=player.speed*dt;
-    dy*=player.speed*dt;
+const others = new Map();
 
-    if(!wall(player.x+dx,player.y))player.x+=dx;
-    if(!wall(player.x,player.y+dy))player.y+=dy;
-  }
+const keys = {};
 
-  /* MONSTER */
-  function updateMonster(dt){
+/* COLLISION */
 
-    const dx=player.x-monster.x;
-    const dy=player.y-monster.y;
+function wall(x,y){
 
-    monster.angle=Math.atan2(dy,dx);
+  const mx = Math.floor(x/TILE);
+  const my = Math.floor(y/TILE);
 
-    monster.x+=Math.cos(monster.angle)*monster.speed*dt;
-    monster.y+=Math.sin(monster.angle)*monster.speed*dt;
+  return !map[my] || map[my][mx] === "#";
+}
+
+/* MOVEMENT */
+
+function move(dt){
+
+  if(!alive) return;
+
+  let dx = 0;
+  let dy = 0;
+
+  if(keys.w) dy -= 1;
+  if(keys.s) dy += 1;
+
+  if(keys.a) dx -= 1;
+  if(keys.d) dx += 1;
+
+  const len = Math.hypot(dx,dy);
+
+  if(len > 0){
+    dx /= len;
+    dy /= len;
   }
 
-  /* DRAW */
-  function draw(){
+  dx *= player.speed * dt;
+  dy *= player.speed * dt;
 
-    ctx.clearRect(0,0,c.width,c.height);
+  if(!wall(player.x + dx, player.y)){
+    player.x += dx;
+  }
 
-    ctx.save();
-    ctx.translate(c.width/2-player.x,c.height/2-player.y);
+  if(!wall(player.x, player.y + dy)){
+    player.y += dy;
+  }
+}
 
-    for(let y=0;y<map.length;y++){
-      for(let x=0;x<map[y].length;x++){
+/* MONSTER AI */
 
-        ctx.fillStyle = map[y][x]==="#"
-          ? "#d4af37"
-          : "#fff6bf";
+function updateMonster(dt){
 
-        ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-      }
+  const dx = player.x - monster.x;
+  const dy = player.y - monster.y;
+
+  monster.angle = Math.atan2(dy,dx);
+
+  const moveX =
+    Math.cos(monster.angle) *
+    monster.speed *
+    dt;
+
+  const moveY =
+    Math.sin(monster.angle) *
+    monster.speed *
+    dt;
+
+  if(!wall(monster.x + moveX, monster.y)){
+    monster.x += moveX;
+  }
+
+  if(!wall(monster.x, monster.y + moveY)){
+    monster.y += moveY;
+  }
+}
+
+/* DRAW */
+
+function draw(){
+
+  ctx.clearRect(0,0,c.width,c.height);
+
+  ctx.save();
+
+  ctx.translate(
+    c.width/2 - player.x,
+    c.height/2 - player.y
+  );
+
+  /* MAZE */
+
+  for(let y=0;y<map.length;y++){
+
+    for(let x=0;x<map[y].length;x++){
+
+      ctx.fillStyle =
+        map[y][x] === "#"
+        ? "#d4af37"
+        : "#fff6bf";
+
+      ctx.fillRect(
+        x*TILE,
+        y*TILE,
+        TILE,
+        TILE
+      );
     }
+  }
 
-    for(const p of others.values()){
-      ctx.fillStyle="#44f";
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,10,0,Math.PI*2);
-      ctx.fill();
-    }
+  /* OTHER PLAYERS */
 
-    ctx.fillStyle="#fff";
+  for(const p of others.values()){
+
+    ctx.fillStyle = p.alive
+      ? "#44f"
+      : "#666";
+
     ctx.beginPath();
-    ctx.arc(player.x,player.y,10,0,Math.PI*2);
-    ctx.fill();
 
-    ctx.fillStyle="#000";
-    ctx.beginPath();
-    ctx.moveTo(monster.x+12,monster.y);
-    ctx.lineTo(monster.x-10,monster.y-8);
-    ctx.lineTo(monster.x-10,monster.y+8);
-    ctx.closePath();
-    ctx.fill();
+    ctx.arc(
+      p.x,
+      p.y,
+      10,
+      0,
+      Math.PI*2
+    );
 
-    ctx.restore();
+    ctx.fill();
   }
 
-  /* LIST */
-  function updateList(players){
-    playerList.innerHTML="";
-    players.forEach(p=>{
-      const d=document.createElement("div");
-      d.textContent=p.username+(p.alive?"":" (SPECTATOR)");
-      playerList.appendChild(d);
+  /* LOCAL PLAYER */
+
+  ctx.fillStyle = "#fff";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    player.x,
+    player.y,
+    10,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+
+  /* MONSTER BODY */
+
+  ctx.fillStyle = "#000";
+
+  ctx.beginPath();
+
+  ctx.moveTo(
+    monster.x + 12,
+    monster.y
+  );
+
+  ctx.lineTo(
+    monster.x - 10,
+    monster.y - 8
+  );
+
+  ctx.lineTo(
+    monster.x - 10,
+    monster.y + 8
+  );
+
+  ctx.closePath();
+
+  ctx.fill();
+
+  /* RED EYES */
+
+  ctx.fillStyle = "red";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    monster.x - 2,
+    monster.y - 3,
+    2,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+
+  ctx.beginPath();
+
+  ctx.arc(
+    monster.x - 2,
+    monster.y + 3,
+    2,
+    0,
+    Math.PI*2
+  );
+
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/* PLAYER LIST */
+
+function updateList(players){
+
+  playerList.innerHTML = "";
+
+  others.clear();
+
+  players.forEach(p=>{
+
+    if(p.id !== socket.id){
+      others.set(p.id,p);
+    }
+
+    const d = document.createElement("div");
+
+    d.className = "playerItem";
+
+    d.textContent =
+      p.username +
+      (p.id === socket.id ? " (YOU)" : "") +
+      (!p.alive ? " (SPECTATOR)" : "");
+
+    playerList.appendChild(d);
+  });
+}
+
+/* LOOP */
+
+let last = performance.now();
+let sent = 0;
+
+function loop(t){
+
+  if(!started) return;
+
+  const dt = (t-last)/1000;
+
+  last = t;
+
+  move(dt);
+
+  updateMonster(dt);
+
+  draw();
+
+  const dist = Math.hypot(
+    player.x - monster.x,
+    player.y - monster.y
+  );
+
+  if(dist < 18 && alive){
+
+    alive = false;
+
+    socket.emit("died");
+
+    gameOverUI.style.display = "flex";
+
+    return;
+  }
+
+  if(t-sent > 33){
+
+    socket.emit("move",{
+      x:player.x,
+      y:player.y,
+      angle:player.angle
     });
+
+    sent = t;
   }
 
-  /* LOOP */
-  let last=performance.now();
-  let sent=0;
+  requestAnimationFrame(loop);
+}
 
-  function loop(t){
+/* INPUT */
 
-    if(!started) return;
+addEventListener("keydown",e=>{
+  keys[e.key.toLowerCase()] = true;
+});
 
-    const dt=(t-last)/1000;
-    last=t;
+addEventListener("keyup",e=>{
+  keys[e.key.toLowerCase()] = false;
+});
 
-    move(dt);
-    updateMonster(dt);
-    draw();
+addEventListener("mousemove",e=>{
 
-    const dist=Math.hypot(player.x-monster.x,player.y-monster.y);
-
-    if(dist<18 && alive){
-      alive=false;
-      socket.emit("died");
-      gameOverUI.style.display="flex";
-      return;
-    }
-
-    if(t-sent>33){
-      socket.emit("move",{x:player.x,y:player.y,angle:player.angle});
-      sent=t;
-    }
-
-    requestAnimationFrame(loop);
+  if(started){
+    player.angle += e.movementX * 0.0025;
   }
+});
 
-  /* INPUT */
-  addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
-  addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+/* BUTTONS */
 
-  addEventListener("mousemove",e=>{
-    if(started) player.angle+=e.movementX*0.0025;
+document.getElementById("create")
+.addEventListener("click",()=>{
+
+  const u = usernameEl.value.trim();
+
+  if(!u) return;
+
+  socket.emit("createParty",u);
+});
+
+document.getElementById("join")
+.addEventListener("click",()=>{
+
+  socket.emit("joinParty",{
+    username:usernameEl.value,
+    code:codeEl.value
   });
+});
 
-  /* SOCKET */
-  socket.on("players",updateList);
+startBtn.addEventListener("click",()=>{
+  socket.emit("startPartyGame");
+});
 
-  socket.on("partyCreated",c=>{
-    console.log("Party created:", c);
-    partyEl.textContent="CODE: "+c;
-    startBtn.style.display="block";
-  });
+/* SOCKET EVENTS */
 
-  socket.on("partyJoined",c=>{
-    partyEl.textContent="CODE: "+c;
-  });
+socket.on("players",players=>{
 
-  socket.on("gameStarted",()=>{
-    menu.style.display="none";
-    started=true;
-    alive=true;
-    last=performance.now();
-    requestAnimationFrame(loop);
-  });
+  updateList(players);
+});
+
+socket.on("playerMoved",data=>{
+
+  const p = others.get(data.id);
+
+  if(!p) return;
+
+  p.x = data.x;
+  p.y = data.y;
+  p.angle = data.angle;
+});
+
+socket.on("partyCreated",code=>{
+
+  partyEl.textContent =
+    "CODE: " + code;
+
+  startBtn.style.display = "block";
+});
+
+socket.on("partyJoined",code=>{
+
+  partyEl.textContent =
+    "CODE: " + code;
+});
+
+socket.on("gameStarted",()=>{
+
+  menu.style.display = "none";
+
+  started = true;
+
+  alive = true;
+
+  last = performance.now();
+
+  requestAnimationFrame(loop);
+});
 
 });
 
 </script>
+
 </body>
 </html>
