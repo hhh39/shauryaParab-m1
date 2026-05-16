@@ -287,7 +287,7 @@ const monster = {
   x:monsterSpawn.x,
   y:monsterSpawn.y,
   angle:0,
-  speed:140
+  speed:170
 };
 
 const monsterPath = [];
@@ -746,7 +746,7 @@ function loop(t){
     player.y - monster.y
   );
 
-  if(dist < 18 && alive){
+  if(dist < 30 && alive){
 
     alive = false;
 
