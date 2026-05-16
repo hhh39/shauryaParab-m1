@@ -86,17 +86,25 @@ button{
 
 <div id="menu">
 
-  <h1 style="color:#2affaa">STATIC LINE</h1>
+  <h1 style="color:#2affaa">
+    STATIC LINE
+  </h1>
 
   <input id="username" placeholder="USERNAME">
 
-  <button id="create">CREATE</button>
+  <button id="create">
+    CREATE
+  </button>
 
   <input id="code" placeholder="CODE">
 
-  <button id="join">JOIN</button>
+  <button id="join">
+    JOIN
+  </button>
 
-  <button id="start" style="display:none">START</button>
+  <button id="start" style="display:none">
+    START
+  </button>
 
   <div id="party"></div>
 
@@ -117,10 +125,15 @@ button{
 </div>
 
 <div id="gameOver">
-  <div>YOU WERE CAUGHT</div>
+
+  <div>
+    YOU WERE CAUGHT
+  </div>
+
   <button onclick="location.reload()">
     RESTART
   </button>
+
 </div>
 
 <canvas id="c"></canvas>
@@ -142,20 +155,28 @@ const ctx = c.getContext("2d");
 
 const menu = document.getElementById("menu");
 
-const usernameEl = document.getElementById("username");
-const codeEl = document.getElementById("code");
+const usernameEl =
+  document.getElementById("username");
 
-const partyEl = document.getElementById("party");
+const codeEl =
+  document.getElementById("code");
 
-const startBtn = document.getElementById("start");
+const partyEl =
+  document.getElementById("party");
 
-const playerList = document.getElementById("playerList");
+const startBtn =
+  document.getElementById("start");
 
-const gameOverUI = document.getElementById("gameOver");
+const playerList =
+  document.getElementById("playerList");
+
+const gameOverUI =
+  document.getElementById("gameOver");
 
 /* CANVAS */
 
 function resize(){
+
   c.width = innerWidth;
   c.height = innerHeight;
 }
@@ -164,14 +185,14 @@ resize();
 
 addEventListener("resize",resize);
 
-/* GAME STATE */
+/* GAME */
 
 let started = false;
 let alive = true;
 
 const TILE = 64;
 
-/* MASSIVE MAZE */
+/* MAP */
 
 const map = [
 
@@ -204,8 +225,8 @@ const map = [
 /* PLAYER */
 
 const player = {
-  x:128,
-  y:128,
+  x:96,
+  y:96,
   angle:0,
   speed:260
 };
@@ -213,13 +234,21 @@ const player = {
 /* MONSTER */
 
 const monster = {
-  x:2300,
-  y:900,
+  x:3500,
+  y:1200,
   angle:0,
-  speed:120
+  speed:140
 };
 
+const monsterPath = [];
+
+let repathTimer = 0;
+
+/* OTHER PLAYERS */
+
 const others = new Map();
+
+/* INPUT */
 
 const keys = {};
 
@@ -227,13 +256,26 @@ const keys = {};
 
 function wall(x,y){
 
-  const mx = Math.floor(x/TILE);
-  const my = Math.floor(y/TILE);
+  const mx = Math.floor(x / TILE);
+  const my = Math.floor(y / TILE);
 
-  return !map[my] || map[my][mx] === "#";
+  return (
+    !map[my] ||
+    map[my][mx] === "#"
+  );
 }
 
-/* MOVEMENT */
+/* GRID HELPERS */
+
+function toGrid(v){
+  return Math.floor(v / TILE);
+}
+
+function toWorld(v){
+  return v * TILE + TILE / 2;
+}
+
+/* PLAYER MOVEMENT */
 
 function move(dt){
 
@@ -242,15 +284,26 @@ function move(dt){
   let dx = 0;
   let dy = 0;
 
-  if(keys.w||keys.arrowup) dy -= 1;
-  if(keys.s||keys.arrowdown) dy += 1;
+  if(keys.w || keys.arrowup){
+    dy -= 1;
+  }
 
-  if(keys.a||keys.arrowleft) dx -= 1;
-  if(keys.d||keys.arrowright) dx += 1;
+  if(keys.s || keys.arrowdown){
+    dy += 1;
+  }
+
+  if(keys.a || keys.arrowleft){
+    dx -= 1;
+  }
+
+  if(keys.d || keys.arrowright){
+    dx += 1;
+  }
 
   const len = Math.hypot(dx,dy);
 
   if(len > 0){
+
     dx /= len;
     dy /= len;
   }
@@ -267,60 +320,186 @@ function move(dt){
   }
 }
 
+/* A* */
+
+function heuristic(ax, ay, bx, by){
+
+  return (
+    Math.abs(ax - bx) +
+    Math.abs(ay - by)
+  );
+}
+
+function getNeighbors(x,y){
+
+  const out = [];
+
+  const dirs = [
+    [1,0],
+    [-1,0],
+    [0,1],
+    [0,-1]
+  ];
+
+  for(const d of dirs){
+
+    const nx = x + d[0];
+    const ny = y + d[1];
+
+    if(
+      map[ny] &&
+      map[ny][nx] &&
+      map[ny][nx] !== "#"
+    ){
+      out.push([nx,ny]);
+    }
+  }
+
+  return out;
+}
+
+function findPath(sx, sy, ex, ey){
+
+  const open = [];
+  const closed = new Set();
+
+  open.push({
+    x:sx,
+    y:sy,
+    g:0,
+    h:heuristic(sx,sy,ex,ey),
+    parent:null
+  });
+
+  while(open.length > 0){
+
+    open.sort((a,b)=>
+      (a.g+a.h)-(b.g+b.h)
+    );
+
+    const current = open.shift();
+
+    const key =
+      current.x + "," + current.y;
+
+    if(closed.has(key)){
+      continue;
+    }
+
+    closed.add(key);
+
+    if(
+      current.x === ex &&
+      current.y === ey
+    ){
+
+      const path = [];
+
+      let c = current;
+
+      while(c){
+
+        path.push({
+          x:c.x,
+          y:c.y
+        });
+
+        c = c.parent;
+      }
+
+      return path.reverse();
+    }
+
+    const neighbors =
+      getNeighbors(current.x,current.y);
+
+    for(const n of neighbors){
+
+      const nx = n[0];
+      const ny = n[1];
+
+      const nkey = nx + "," + ny;
+
+      if(closed.has(nkey)){
+        continue;
+      }
+
+      open.push({
+        x:nx,
+        y:ny,
+        g:current.g + 1,
+        h:heuristic(nx,ny,ex,ey),
+        parent:current
+      });
+    }
+  }
+
+  return [];
+}
+
 /* MONSTER AI */
 
 function updateMonster(dt){
 
-  const dx = player.x - monster.x;
-  const dy = player.y - monster.y;
+  repathTimer -= dt;
 
-  const dist = Math.hypot(dx, dy);
-  if (dist === 0) return;
+  const sx = toGrid(monster.x);
+  const sy = toGrid(monster.y);
 
-  monster.angle = Math.atan2(dy, dx);
+  const ex = toGrid(player.x);
+  const ey = toGrid(player.y);
 
-  const speed = monster.speed * dt;
+  if(repathTimer <= 0){
 
-  const vx = Math.cos(monster.angle) * speed;
-  const vy = Math.sin(monster.angle) * speed;
+    monsterPath.length = 0;
 
-  // full move attempt
-  if(!wall(monster.x + vx, monster.y + vy)){
-    monster.x += vx;
-    monster.y += vy;
+    const path =
+      findPath(sx,sy,ex,ey);
+
+    for(const p of path){
+      monsterPath.push(p);
+    }
+
+    repathTimer = 0.35;
+  }
+
+  if(monsterPath.length < 2){
     return;
   }
 
-  // axis slide
-  let moved = false;
+  const next = monsterPath[1];
+
+  const tx = toWorld(next.x);
+  const ty = toWorld(next.y);
+
+  const dx = tx - monster.x;
+  const dy = ty - monster.y;
+
+  const dist = Math.hypot(dx,dy);
+
+  if(dist < 5){
+
+    monsterPath.shift();
+    return;
+  }
+
+  monster.angle =
+    Math.atan2(dy,dx);
+
+  const vx =
+    Math.cos(monster.angle) *
+    monster.speed * dt;
+
+  const vy =
+    Math.sin(monster.angle) *
+    monster.speed * dt;
 
   if(!wall(monster.x + vx, monster.y)){
     monster.x += vx;
-    moved = true;
   }
 
   if(!wall(monster.x, monster.y + vy)){
     monster.y += vy;
-    moved = true;
-  }
-
-  // SAFE STUCK FIX (no teleporting into walls)
-  if(!moved){
-
-    // step back along opposite direction until valid space found
-    const backStep = 2;
-
-    for(let i = 0; i < 5; i++){
-
-      const bx = monster.x - Math.cos(monster.angle) * backStep * i;
-      const by = monster.y - Math.sin(monster.angle) * backStep * i;
-
-      if(!wall(bx, by)){
-        monster.x = bx;
-        monster.y = by;
-        break;
-      }
-    }
   }
 }
 
@@ -357,11 +536,35 @@ function draw(){
     }
   }
 
+  /* PATH DEBUG */
+
+  ctx.strokeStyle = "red";
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+
+  for(let i=0;i<monsterPath.length;i++){
+
+    const p = monsterPath[i];
+
+    const px = toWorld(p.x);
+    const py = toWorld(p.y);
+
+    if(i === 0){
+      ctx.moveTo(px,py);
+    }else{
+      ctx.lineTo(px,py);
+    }
+  }
+
+  ctx.stroke();
+
   /* OTHER PLAYERS */
 
   for(const p of others.values()){
 
-    ctx.fillStyle = p.alive
+    ctx.fillStyle =
+      p.alive
       ? "#44f"
       : "#666";
 
@@ -378,7 +581,7 @@ function draw(){
     ctx.fill();
   }
 
-  /* LOCAL PLAYER */
+  /* PLAYER */
 
   ctx.fillStyle = "#fff";
 
@@ -394,58 +597,42 @@ function draw(){
 
   ctx.fill();
 
-  /* MONSTER BODY */
+  /* MONSTER */
+
+  ctx.save();
+
+  ctx.translate(
+    monster.x,
+    monster.y
+  );
+
+  ctx.rotate(monster.angle);
 
   ctx.fillStyle = "#000";
 
   ctx.beginPath();
 
-  ctx.moveTo(
-    monster.x + 12,
-    monster.y
-  );
-
-  ctx.lineTo(
-    monster.x - 10,
-    monster.y - 8
-  );
-
-  ctx.lineTo(
-    monster.x - 10,
-    monster.y + 8
-  );
+  ctx.moveTo(14,0);
+  ctx.lineTo(-12,-10);
+  ctx.lineTo(-12,10);
 
   ctx.closePath();
 
   ctx.fill();
 
-  /* RED EYES */
+  /* EYES */
 
   ctx.fillStyle = "red";
 
   ctx.beginPath();
-
-  ctx.arc(
-    monster.x - 2,
-    monster.y - 3,
-    2,
-    0,
-    Math.PI*2
-  );
-
+  ctx.arc(0,-4,2,0,Math.PI*2);
   ctx.fill();
 
   ctx.beginPath();
-
-  ctx.arc(
-    monster.x - 2,
-    monster.y + 3,
-    2,
-    0,
-    Math.PI*2
-  );
-
+  ctx.arc(0,4,2,0,Math.PI*2);
   ctx.fill();
+
+  ctx.restore();
 
   ctx.restore();
 }
@@ -464,14 +651,19 @@ function updateList(players){
       others.set(p.id,p);
     }
 
-    const d = document.createElement("div");
+    const d =
+      document.createElement("div");
 
     d.className = "playerItem";
 
     d.textContent =
       p.username +
-      (p.id === socket.id ? " (YOU)" : "") +
-      (!p.alive ? " (SPECTATOR)" : "");
+      (p.id === socket.id
+        ? " (YOU)"
+        : "") +
+      (!p.alive
+        ? " (SPECTATOR)"
+        : "");
 
     playerList.appendChild(d);
   });
@@ -484,7 +676,9 @@ let sent = 0;
 
 function loop(t){
 
-  if(!started) return;
+  if(!started){
+    return;
+  }
 
   const dt = (t-last)/1000;
 
@@ -507,12 +701,13 @@ function loop(t){
 
     socket.emit("died");
 
-    gameOverUI.style.display = "flex";
+    gameOverUI.style.display =
+      "flex";
 
     return;
   }
 
-  if(t-sent > 33){
+  if(t - sent > 33){
 
     socket.emit("move",{
       x:player.x,
@@ -529,43 +724,61 @@ function loop(t){
 /* INPUT */
 
 addEventListener("keydown",e=>{
+
   keys[e.key.toLowerCase()] = true;
 });
 
 addEventListener("keyup",e=>{
+
   keys[e.key.toLowerCase()] = false;
 });
 
 addEventListener("mousemove",e=>{
 
   if(started){
-    player.angle += e.movementX * 0.0025;
+
+    player.angle +=
+      e.movementX * 0.0025;
   }
 });
 
 /* BUTTONS */
 
-document.getElementById("create")
+document
+.getElementById("create")
 .addEventListener("click",()=>{
 
-  const u = usernameEl.value.trim();
+  const u =
+    usernameEl.value.trim();
 
-  if(!u) return;
+  if(!u){
+    return;
+  }
 
-  socket.emit("createParty",u);
+  socket.emit(
+    "createParty",
+    u
+  );
 });
 
-document.getElementById("join")
+document
+.getElementById("join")
 .addEventListener("click",()=>{
 
   socket.emit("joinParty",{
-    username:usernameEl.value,
-    code:codeEl.value
+    username:
+      usernameEl.value.trim(),
+    code:
+      codeEl.value.trim()
   });
 });
 
-startBtn.addEventListener("click",()=>{
-  socket.emit("startPartyGame");
+startBtn
+.addEventListener("click",()=>{
+
+  socket.emit(
+    "startPartyGame"
+  );
 });
 
 /* SOCKET EVENTS */
@@ -577,9 +790,12 @@ socket.on("players",players=>{
 
 socket.on("playerMoved",data=>{
 
-  const p = others.get(data.id);
+  const p =
+    others.get(data.id);
 
-  if(!p) return;
+  if(!p){
+    return;
+  }
 
   p.x = data.x;
   p.y = data.y;
@@ -591,7 +807,8 @@ socket.on("partyCreated",code=>{
   partyEl.textContent =
     "CODE: " + code;
 
-  startBtn.style.display = "block";
+  startBtn.style.display =
+    "block";
 });
 
 socket.on("partyJoined",code=>{
@@ -605,7 +822,6 @@ socket.on("gameStarted",()=>{
   menu.style.display = "none";
 
   started = true;
-
   alive = true;
 
   last = performance.now();
