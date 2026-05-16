@@ -191,6 +191,7 @@ let started = false;
 let alive = true;
 
 const TILE = 64;
+const ENTITY_RADIUS = 12;
 
 /* MAP */
 
@@ -222,11 +223,60 @@ const map = [
 
 ];
 
+/* SAFE SPAWN FINDER */
+
+function findOpenTile(startBottom=false){
+
+  if(startBottom){
+
+    for(let y=map.length-1;y>=0;y--){
+
+      for(let x=map[y].length-1;x>=0;x--){
+
+        if(map[y][x] === "."){
+
+          return {
+            x:x*TILE + TILE/2,
+            y:y*TILE + TILE/2
+          };
+        }
+      }
+    }
+
+  }else{
+
+    for(let y=0;y<map.length;y++){
+
+      for(let x=0;x<map[y].length;x++){
+
+        if(map[y][x] === "."){
+
+          return {
+            x:x*TILE + TILE/2,
+            y:y*TILE + TILE/2
+          };
+        }
+      }
+    }
+  }
+
+  return {
+    x:96,
+    y:96
+  };
+}
+
+const playerSpawn =
+  findOpenTile(false);
+
+const monsterSpawn =
+  findOpenTile(true);
+
 /* PLAYER */
 
 const player = {
-  x:96,
-  y:96,
+  x:playerSpawn.x,
+  y:playerSpawn.y,
   angle:0,
   speed:260
 };
@@ -234,8 +284,8 @@ const player = {
 /* MONSTER */
 
 const monster = {
-  x:3500,
-  y:1200,
+  x:monsterSpawn.x,
+  y:monsterSpawn.y,
   angle:0,
   speed:140
 };
@@ -254,15 +304,31 @@ const keys = {};
 
 /* COLLISION */
 
-function wall(x,y){
+function wall(x,y,r=ENTITY_RADIUS){
 
-  const mx = Math.floor(x / TILE);
-  const my = Math.floor(y / TILE);
+  const points = [
 
-  return (
-    !map[my] ||
-    map[my][mx] === "#"
-  );
+    [x-r,y-r],
+    [x+r,y-r],
+    [x-r,y+r],
+    [x+r,y+r]
+
+  ];
+
+  for(const p of points){
+
+    const mx = Math.floor(p[0]/TILE);
+    const my = Math.floor(p[1]/TILE);
+
+    if(
+      !map[my] ||
+      map[my][mx] === "#"
+    ){
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* GRID HELPERS */
@@ -272,14 +338,16 @@ function toGrid(v){
 }
 
 function toWorld(v){
-  return v * TILE + TILE / 2;
+  return v * TILE + TILE/2;
 }
 
 /* PLAYER MOVEMENT */
 
 function move(dt){
 
-  if(!alive) return;
+  if(!alive){
+    return;
+  }
 
   let dx = 0;
   let dy = 0;
@@ -322,11 +390,11 @@ function move(dt){
 
 /* A* */
 
-function heuristic(ax, ay, bx, by){
+function heuristic(ax,ay,bx,by){
 
   return (
-    Math.abs(ax - bx) +
-    Math.abs(ay - by)
+    Math.abs(ax-bx) +
+    Math.abs(ay-by)
   );
 }
 
@@ -358,7 +426,7 @@ function getNeighbors(x,y){
   return out;
 }
 
-function findPath(sx, sy, ex, ey){
+function findPath(sx,sy,ex,ey){
 
   const open = [];
   const closed = new Set();
@@ -453,10 +521,10 @@ function updateMonster(dt){
 
     monsterPath.length = 0;
 
-    const path =
+    const newPath =
       findPath(sx,sy,ex,ey);
 
-    for(const p of path){
+    for(const p of newPath){
       monsterPath.push(p);
     }
 
@@ -477,7 +545,7 @@ function updateMonster(dt){
 
   const dist = Math.hypot(dx,dy);
 
-  if(dist < 5){
+  if(dist < 6){
 
     monsterPath.shift();
     return;
@@ -535,29 +603,6 @@ function draw(){
       );
     }
   }
-
-  /* PATH DEBUG */
-
-  ctx.strokeStyle = "red";
-  ctx.lineWidth = 3;
-
-  ctx.beginPath();
-
-  for(let i=0;i<monsterPath.length;i++){
-
-    const p = monsterPath[i];
-
-    const px = toWorld(p.x);
-    const py = toWorld(p.y);
-
-    if(i === 0){
-      ctx.moveTo(px,py);
-    }else{
-      ctx.lineTo(px,py);
-    }
-  }
-
-  ctx.stroke();
 
   /* OTHER PLAYERS */
 
@@ -680,13 +725,19 @@ function loop(t){
     return;
   }
 
-  const dt = (t-last)/1000;
+  const dt =
+    (t-last)/1000;
 
   last = t;
 
-  move(dt);
+  /* SAFE DT */
 
-  updateMonster(dt);
+  const safeDt =
+    Math.min(dt,0.03);
+
+  move(safeDt);
+
+  updateMonster(safeDt);
 
   draw();
 
